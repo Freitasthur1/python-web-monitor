@@ -287,9 +287,15 @@ def main():
         "Notas",
         "Segunda Etapa",
         "Convocação",
+        "Lista",
+        "Lista"
+        "classificados",
+        "segunda fase",
+        "Candidatos",
         "CMA",
         "49",
         "50",
+        "51",
     }
     
     # Intervalo entre verificações (em minutos)

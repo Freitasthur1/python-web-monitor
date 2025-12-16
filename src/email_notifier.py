@@ -44,7 +44,8 @@ class EmailNotifier:
         self,
         url: str,
         palavras_encontradas: List[str],
-        mudanca_conteudo: bool
+        mudanca_conteudo: bool,
+        destinatarios: Optional[List[str]] = None
     ) -> bool:
         """
         Envia email de alerta
@@ -53,6 +54,7 @@ class EmailNotifier:
             url: URL do edital
             palavras_encontradas: Lista de palavras-chave encontradas
             mudanca_conteudo: Se houve mudança no conteúdo
+            destinatarios: Lista opcional de emails destinatários (se None, usa to_email)
 
         Returns:
             True se enviou com sucesso, False caso contrário
@@ -60,34 +62,47 @@ class EmailNotifier:
         if not self.enabled:
             return False
 
+        # Usa lista de destinatários ou email padrão
+        emails_destino = destinatarios if destinatarios else [self.to_email]
+
+        if not emails_destino:
+            return False
+
         try:
-            # Cria mensagem
-            msg = MIMEMultipart('alternative')
-            msg['Subject'] = f'[Monitor de Editais] Alerta Detectado - {datetime.now().strftime("%d/%m/%Y %H:%M")}'
-            msg['From'] = self.from_email
-            msg['To'] = self.to_email
+            # Envia para cada destinatário
+            enviados = 0
+            for email_destino in emails_destino:
+                if not email_destino or '@' not in email_destino:
+                    continue
 
-            # Corpo do email
-            texto = self._criar_corpo_texto(url, palavras_encontradas, mudanca_conteudo)
-            html = self._criar_corpo_html(url, palavras_encontradas, mudanca_conteudo)
+                # Cria mensagem
+                msg = MIMEMultipart('alternative')
+                msg['Subject'] = f'[Monitor de Editais] Alerta Detectado - {datetime.now().strftime("%d/%m/%Y %H:%M")}'
+                msg['From'] = self.from_email
+                msg['To'] = email_destino
 
-            parte_texto = MIMEText(texto, 'plain', 'utf-8')
-            parte_html = MIMEText(html, 'html', 'utf-8')
+                # Corpo do email
+                texto = self._criar_corpo_texto(url, palavras_encontradas, mudanca_conteudo)
+                html = self._criar_corpo_html(url, palavras_encontradas, mudanca_conteudo)
 
-            msg.attach(parte_texto)
-            msg.attach(parte_html)
+                parte_texto = MIMEText(texto, 'plain', 'utf-8')
+                parte_html = MIMEText(html, 'html', 'utf-8')
 
-            # Envia email
-            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-                if self.use_tls:
-                    server.starttls()
+                msg.attach(parte_texto)
+                msg.attach(parte_html)
 
-                if self.smtp_user and self.smtp_password:
-                    server.login(self.smtp_user, self.smtp_password)
+                # Envia email
+                with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+                    if self.use_tls:
+                        server.starttls()
 
-                server.send_message(msg)
+                    if self.smtp_user and self.smtp_password:
+                        server.login(self.smtp_user, self.smtp_password)
 
-            return True
+                    server.send_message(msg)
+                    enviados += 1
+
+            return enviados > 0
 
         except Exception as e:
             print(f"Erro ao enviar email: {str(e)}")

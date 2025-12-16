@@ -273,7 +273,7 @@ def main():
         "CMA",
     }
     
-    INTERVALO_MINUTOS = 10
+    INTERVALO_MINUTOS = 5
     
     # ========================================================================
     # CONFIGURAÇÕES DE E-MAIL (OPCIONAL)

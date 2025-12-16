@@ -160,8 +160,7 @@ Este projeto está sob a licença MIT. Veja [LICENSE](docs/LICENSE) para mais de
 ## Autor
 
 **Arthur Freitas**
-Estudante de Criptografia e Blockchain
-Residência Tecnológica - CPqD
+Residente de Criptografia aplicada às tecnologias Blockchain - CPqD
 
 ## Suporte
 

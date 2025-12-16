@@ -9,7 +9,7 @@ let updateInterval = null;
 // Initialize application
 document.addEventListener('DOMContentLoaded', function() {
     loadUserPreferences();
-    loadEmailConfig();
+    loadSubscribers();
     updateStatus();
     updateLogs();
 
@@ -90,110 +90,120 @@ function toggleDarkMode() {
     localStorage.setItem('darkMode', darkMode);
 }
 
-// Load email configuration
-async function loadEmailConfig() {
+// Load subscribers
+async function loadSubscribers() {
     try {
-        const response = await fetch('/api/config');
-        const config = await response.json();
+        const response = await fetch('/api/subscribers');
+        const data = await response.json();
 
-        if (config.email) {
-            document.getElementById('emailEnabled').checked = config.email.enabled || false;
-            document.getElementById('smtpServer').value = config.email.smtp_server || '';
-            document.getElementById('smtpPort').value = config.email.smtp_port || 587;
-            document.getElementById('smtpUser').value = config.email.smtp_user || '';
-            document.getElementById('smtpPassword').value = config.email.smtp_password || '';
-            document.getElementById('fromEmail').value = config.email.from_email || '';
-            document.getElementById('toEmail').value = config.email.to_email || '';
-            document.getElementById('useTLS').checked = config.email.use_tls !== false;
+        const count = data.count || 0;
+        const subscribers = data.subscribers || [];
 
-            toggleEmailFields();
+        document.getElementById('subscriberCount').textContent = count;
+
+        const listContainer = document.getElementById('subscribersList');
+
+        if (subscribers.length === 0) {
+            listContainer.innerHTML = '<p style="text-align: center; color: var(--gray-600, #718096); padding: 20px;">Nenhum email inscrito ainda</p>';
+        } else {
+            let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
+            subscribers.forEach(email => {
+                html += `
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--gray-50, #f7fafc); border-radius: 6px; border: 1px solid var(--gray-200, #e2e8f0);">
+                        <span style="font-size: 14px; color: var(--gray-700, #4a5568);">${escapeHtml(email)}</span>
+                        <button onclick="unsubscribeEmail('${escapeHtml(email)}')" style="padding: 6px 12px; background: var(--accent-alert, #ef4444); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                            Remover
+                        </button>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            listContainer.innerHTML = html;
         }
     } catch (error) {
-        console.error('Erro ao carregar configuração de email:', error);
+        console.error('Erro ao carregar inscritos:', error);
     }
 }
 
-// Toggle email fields
-function toggleEmailFields() {
-    const enabled = document.getElementById('emailEnabled').checked;
-    const fields = document.getElementById('emailFields');
-    const testBtn = document.getElementById('testEmailBtn');
-
-    if (enabled) {
-        fields.style.display = 'block';
-        testBtn.disabled = false;
-    } else {
-        fields.style.display = 'none';
-        testBtn.disabled = true;
-    }
-}
-
-// Save email configuration
-async function saveEmailConfig(event) {
+// Subscribe email
+async function subscribeEmail(event) {
     event.preventDefault();
 
-    // Get existing config first
-    const existingResponse = await fetch('/api/config');
-    const existingConfig = await existingResponse.json();
+    const emailInput = document.getElementById('subscribeEmailInput');
+    const email = emailInput.value.trim();
 
-    const emailConfig = {
-        enabled: document.getElementById('emailEnabled').checked,
-        smtp_server: document.getElementById('smtpServer').value,
-        smtp_port: parseInt(document.getElementById('smtpPort').value),
-        smtp_user: document.getElementById('smtpUser').value,
-        smtp_password: document.getElementById('smtpPassword').value,
-        from_email: document.getElementById('fromEmail').value,
-        to_email: document.getElementById('toEmail').value,
-        use_tls: document.getElementById('useTLS').checked
-    };
-
-    const config = {
-        ...existingConfig,
-        email: emailConfig
-    };
+    if (!email) {
+        showNotification('Por favor, digite um email', 'error');
+        return;
+    }
 
     try {
-        const response = await fetch('/api/config', {
+        const response = await fetch('/api/subscribers', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(config)
+            body: JSON.stringify({ email })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            showNotification('Email cadastrado com sucesso! Você receberá alertas quando houver mudanças.', 'success');
+            emailInput.value = '';
+            loadSubscribers();
+        } else {
+            showNotification(data.error || 'Erro ao cadastrar email', 'error');
+        }
+    } catch (error) {
+        console.error('Erro ao cadastrar email:', error);
+        showNotification('Erro ao cadastrar email', 'error');
+    }
+}
+
+// Unsubscribe email
+async function unsubscribeEmail(email) {
+    if (!confirm(`Tem certeza que deseja remover ${email} da lista?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/subscribers/${encodeURIComponent(email)}`, {
+            method: 'DELETE'
         });
 
         if (response.ok) {
-            showNotification('Configurações de email salvas com sucesso!', 'success');
+            showNotification('Email removido com sucesso', 'success');
+            loadSubscribers();
         } else {
-            const error = await response.json();
-            showNotification('Erro: ' + error.error, 'error');
+            const data = await response.json();
+            showNotification(data.error || 'Erro ao remover email', 'error');
         }
     } catch (error) {
-        console.error('Erro ao salvar configuração de email:', error);
-        showNotification('Erro ao salvar configuração de email', 'error');
+        console.error('Erro ao remover email:', error);
+        showNotification('Erro ao remover email', 'error');
     }
 }
 
-// Test email
-async function testEmail() {
-    const btn = document.getElementById('testEmailBtn');
-    const originalHTML = btn.innerHTML;
-
-    btn.disabled = true;
-    btn.innerHTML = 'Enviando...';
+// Test email notifications
+async function testEmailNotifications() {
+    if (!confirm('Enviar email de teste para todos os inscritos?')) {
+        return;
+    }
 
     try {
-        const response = await fetch('/api/test-email', { method: 'POST' });
+        const response = await fetch('/api/test-email', {
+            method: 'POST'
+        });
+
+        const data = await response.json();
 
         if (response.ok) {
-            showNotification('Email de teste enviado com sucesso! Verifique sua caixa de entrada.', 'success');
+            showNotification(`${data.message}\nVerifique a caixa de entrada dos emails cadastrados.`, 'success');
         } else {
-            const error = await response.json();
-            showNotification('Erro ao enviar email: ' + error.error, 'error');
+            showNotification(data.error || 'Erro ao enviar email de teste', 'error');
         }
     } catch (error) {
         console.error('Erro ao testar email:', error);
         showNotification('Erro ao testar email', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalHTML;
     }
 }
 

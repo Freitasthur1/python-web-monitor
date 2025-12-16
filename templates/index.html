@@ -60,10 +60,9 @@
 
                 <button class="nav-btn" onclick="showView('notificacoes')" data-view="notificacoes">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                        <polyline points="22,6 12,13 2,6"></polyline>
+                        <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
                     </svg>
-                    <span>Notificações</span>
+                    <span>Receber Alertas</span>
                 </button>
 
                 <button class="nav-btn" onclick="showView('logs')" data-view="logs">
@@ -227,113 +226,66 @@
             <!-- Notificações View -->
             <div class="content-view" id="view-notificacoes">
                 <div class="section-header">
-                    <h2>Notificações por Email</h2>
-                    <p>Receba alertas automáticos quando mudanças forem detectadas</p>
+                    <h2>Receber Alertas por Email</h2>
+                    <p>Cadastre seu email e seja notificado quando houver mudanças no edital</p>
                 </div>
 
-                <form class="config-form" onsubmit="saveEmailConfig(event)">
-                    <div class="form-card">
-                        <div class="form-group">
-                            <label class="toggle-label">
-                                <input type="checkbox" id="emailEnabled" onchange="toggleEmailFields()">
-                                <span class="toggle-switch"></span>
-                                <span class="toggle-text">Ativar notificações por email</span>
-                            </label>
+                <div class="form-card">
+                    <div class="alert-info">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        <div>
+                            <strong>Como funciona:</strong>
+                            <p>Digite seu email abaixo e clique em "Cadastrar". Você receberá notificações automáticas sempre que o sistema detectar mudanças no edital do projeto Asas para Todos.</p>
                         </div>
+                    </div>
 
-                        <div id="emailFields" style="display: none;">
-                            <div class="alert-info">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <line x1="12" y1="16" x2="12" y2="12"></line>
-                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    <form class="config-form" onsubmit="subscribeEmail(event)" style="margin-top: 20px;">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                    <polyline points="22,6 12,13 2,6"></polyline>
                                 </svg>
-                                <div>
-                                    <strong>Como funciona:</strong>
-                                    <p>Configure seu email abaixo e receba notificações automáticas sempre que o sistema detectar mudanças na página ou encontrar palavras-chave.</p>
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">Servidor SMTP</label>
-                                    <input type="text" id="smtpServer" class="form-input" placeholder="smtp.gmail.com">
-                                    <small class="form-hint">Gmail: smtp.gmail.com | Outlook: smtp-mail.outlook.com</small>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Porta SMTP</label>
-                                    <input type="number" id="smtpPort" class="form-input" placeholder="587">
-                                    <small class="form-hint">Geralmente: 587 (TLS) ou 465 (SSL)</small>
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">Email de Envio</label>
-                                    <input type="email" id="smtpUser" class="form-input" placeholder="seu@email.com">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Senha SMTP</label>
-                                    <input type="password" id="smtpPassword" class="form-input" placeholder="senha ou app password">
-                                    <small class="form-hint">Gmail: use "Senha de App" ao invés da senha normal</small>
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label">Email Remetente</label>
-                                    <input type="email" id="fromEmail" class="form-input" placeholder="remetente@email.com">
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Email para Notificações</label>
-                                    <input type="email" id="toEmail" class="form-input" placeholder="destino@email.com">
-                                    <small class="form-hint">Email onde você receberá os alertas</small>
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="toggle-label">
-                                    <input type="checkbox" id="useTLS" checked>
-                                    <span class="toggle-switch"></span>
-                                    <span class="toggle-text">Usar conexão TLS (recomendado)</span>
-                                </label>
-                            </div>
-
-                            <div class="alert-warning">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                                    <line x1="12" y1="9" x2="12" y2="13"></line>
-                                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                                </svg>
-                                <div>
-                                    <strong>Dica para Gmail:</strong>
-                                    <ol>
-                                        <li>Acesse sua Conta Google</li>
-                                        <li>Vá em "Segurança" → "Verificação em duas etapas"</li>
-                                        <li>Gere uma "Senha de app" para este sistema</li>
-                                        <li>Use a senha de app no campo acima</li>
-                                    </ol>
-                                </div>
-                            </div>
+                                Seu Email
+                            </label>
+                            <input type="email" id="subscribeEmailInput" class="form-input" placeholder="seuemail@exemplo.com" required>
+                            <small class="form-hint">Digite um email válido para receber as notificações</small>
                         </div>
 
                         <div class="form-actions">
                             <button type="submit" class="btn-primary">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                    <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
                                 </svg>
-                                Salvar Configurações
+                                Cadastrar para Receber Alertas
                             </button>
-                            <button type="button" class="btn-secondary" onclick="testEmail()" id="testEmailBtn" disabled>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        </div>
+                    </form>
+
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--gray-200, #e2e8f0);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+                            <h3 style="font-size: 16px; color: var(--text-primary, #1a1a1a);">
+                                Emails Inscritos (<span id="subscriberCount">0</span>)
+                            </h3>
+                            <button onclick="testEmailNotifications()" class="btn-secondary" style="padding: 8px 16px; font-size: 13px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
                                     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                                     <polyline points="22,6 12,13 2,6"></polyline>
                                 </svg>
                                 Testar Email
                             </button>
                         </div>
+                        <div id="subscribersList" style="max-height: 300px; overflow-y: auto;">
+                            <p style="text-align: center; color: var(--gray-600, #718096); padding: 20px;">
+                                Nenhum email inscrito ainda
+                            </p>
+                        </div>
                     </div>
-                </form>
+                </div>
             </div>
 
             <!-- Logs View -->

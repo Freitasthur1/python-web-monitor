@@ -24,12 +24,14 @@ from src.email_notifier import EmailNotifier
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_DIR = os.path.join(BASE_DIR, 'config')
 LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+DATA_DIR = os.path.join(BASE_DIR, 'data')
 TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
 
 # Cria diretórios se não existirem
 os.makedirs(CONFIG_DIR, exist_ok=True)
 os.makedirs(LOGS_DIR, exist_ok=True)
+os.makedirs(DATA_DIR, exist_ok=True)
 
 app = Flask(__name__,
             template_folder=TEMPLATE_DIR,
@@ -38,6 +40,7 @@ CORS(app)
 
 # Configurações
 CONFIG_FILE = os.path.join(CONFIG_DIR, 'config.json')
+SUBSCRIBERS_FILE = os.path.join(DATA_DIR, 'subscribers.json')
 LOGS_MAX = 100
 
 # Estado global do monitor
@@ -91,6 +94,54 @@ def save_config(config: Dict):
     """Salva configuração no arquivo JSON"""
     with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
         json.dump(config, f, indent=4, ensure_ascii=False)
+
+
+def load_subscribers() -> List[str]:
+    """Carrega lista de emails inscritos"""
+    if os.path.exists(SUBSCRIBERS_FILE):
+        try:
+            with open(SUBSCRIBERS_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data.get('emails', [])
+        except:
+            return []
+    return []
+
+
+def save_subscribers(emails: List[str]):
+    """Salva lista de emails inscritos"""
+    with open(SUBSCRIBERS_FILE, 'w', encoding='utf-8') as f:
+        json.dump({'emails': emails}, f, indent=4, ensure_ascii=False)
+
+
+def add_subscriber(email: str) -> bool:
+    """Adiciona um email à lista de inscritos"""
+    if not email or '@' not in email:
+        return False
+
+    emails = load_subscribers()
+    email_lower = email.lower().strip()
+
+    if email_lower not in [e.lower() for e in emails]:
+        emails.append(email_lower)
+        save_subscribers(emails)
+        add_log(f"Novo inscrito: {email_lower}", "INFO")
+        return True
+    return False
+
+
+def remove_subscriber(email: str) -> bool:
+    """Remove um email da lista de inscritos"""
+    emails = load_subscribers()
+    email_lower = email.lower().strip()
+
+    emails_filtered = [e for e in emails if e.lower() != email_lower]
+
+    if len(emails_filtered) < len(emails):
+        save_subscribers(emails_filtered)
+        add_log(f"Inscrito removido: {email_lower}", "INFO")
+        return True
+    return False
 
 
 def add_log(mensagem: str, tipo: str = "INFO"):
@@ -166,13 +217,20 @@ def monitor_loop():
 
                 # Envia notificação por email
                 if monitor_state['email_notifier']:
-                    if monitor_state['email_notifier'].enviar_alerta(
-                        url, palavras_encontradas, mudanca_conteudo
-                    ):
-                        add_log("Notificação por email enviada", "SUCESSO")
-                        alerta_enviado = True
+                    # Carrega lista de emails inscritos
+                    subscribers = load_subscribers()
+
+                    if subscribers:
+                        # Envia para todos os inscritos
+                        if monitor_state['email_notifier'].enviar_alerta(
+                            url, palavras_encontradas, mudanca_conteudo, destinatarios=subscribers
+                        ):
+                            add_log(f"Notificação enviada para {len(subscribers)} inscrito(s)", "SUCESSO")
+                            alerta_enviado = True
+                        else:
+                            add_log("Falha ao enviar notificações", "ERRO")
                     else:
-                        add_log("Falha ao enviar notificação por email", "ERRO")
+                        add_log("Nenhum email inscrito para notificar", "INFO")
             else:
                 add_log("Nenhuma mudança detectada", "INFO")
 
@@ -270,23 +328,36 @@ def update_config():
 
 @app.route('/api/test-email', methods=['POST'])
 def test_email():
-    """Testa configuração de email"""
+    """Testa configuração de email enviando para todos os inscritos"""
     try:
         config = load_config()
         if not config.get('email', {}).get('enabled', False):
             return jsonify({'error': 'Notificações por email desabilitadas'}), 400
 
+        # Carrega lista de inscritos
+        subscribers = load_subscribers()
+        if not subscribers:
+            return jsonify({'error': 'Nenhum email inscrito para testar'}), 400
+
         notifier = EmailNotifier(config['email'])
         sucesso, mensagem = notifier.testar_conexao()
 
         if sucesso:
-            # Envia email de teste
-            notifier.enviar_alerta(
-                url="https://exemplo.com/teste",
-                palavras_encontradas=["teste"],
-                mudanca_conteudo=True
-            )
-            return jsonify({'message': 'Email de teste enviado com sucesso'})
+            # Envia email de teste para todos os inscritos
+            if notifier.enviar_alerta(
+                url=config.get('url', 'https://fgduque.org.br/edital/projeto-asas-para-todos-ufersa-fgd-anac-edital-18-2024-1718822792'),
+                palavras_encontradas=["Teste de Notificação"],
+                mudanca_conteudo=True,
+                destinatarios=subscribers
+            ):
+                add_log(f"Email de teste enviado para {len(subscribers)} inscrito(s)", "SUCESSO")
+                return jsonify({
+                    'message': f'Email de teste enviado com sucesso para {len(subscribers)} inscrito(s)!',
+                    'count': len(subscribers),
+                    'subscribers': subscribers
+                })
+            else:
+                return jsonify({'error': 'Falha ao enviar emails de teste'}), 500
         else:
             return jsonify({'error': mensagem}), 400
 
@@ -327,6 +398,56 @@ def clear_logs():
     """Limpa logs"""
     monitor_state['logs'] = []
     return jsonify({'message': 'Logs limpos'})
+
+
+@app.route('/api/subscribers', methods=['GET'])
+def get_subscribers():
+    """Retorna lista de emails inscritos"""
+    subscribers = load_subscribers()
+    return jsonify({
+        'subscribers': subscribers,
+        'count': len(subscribers)
+    })
+
+
+@app.route('/api/subscribers', methods=['POST'])
+def add_subscriber_endpoint():
+    """Adiciona um email à lista de inscritos"""
+    try:
+        data = request.json
+        email = data.get('email', '').strip()
+
+        if not email:
+            return jsonify({'error': 'Email não fornecido'}), 400
+
+        if '@' not in email:
+            return jsonify({'error': 'Email inválido'}), 400
+
+        if add_subscriber(email):
+            subscribers_count = len(load_subscribers())
+            return jsonify({
+                'message': 'Email cadastrado com sucesso!',
+                'email': email,
+                'total_subscribers': subscribers_count
+            })
+        else:
+            return jsonify({'error': 'Este email já está cadastrado'}), 400
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/subscribers/<email>', methods=['DELETE'])
+def remove_subscriber_endpoint(email):
+    """Remove um email da lista de inscritos"""
+    try:
+        if remove_subscriber(email):
+            return jsonify({'message': 'Email removido com sucesso'})
+        else:
+            return jsonify({'error': 'Email não encontrado'}), 404
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':

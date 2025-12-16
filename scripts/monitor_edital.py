@@ -288,10 +288,12 @@ def main():
         "Segunda Etapa",
         "Convocação",
         "CMA",
+        "49",
+        "50",
     }
     
     # Intervalo entre verificações (em minutos)
-    INTERVALO_MINUTOS = 10
+    INTERVALO_MINUTOS = 5
     
     # ========================================================================
     

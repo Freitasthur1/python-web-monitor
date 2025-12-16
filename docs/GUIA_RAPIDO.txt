@@ -1,0 +1,113 @@
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    🔔 MONITOR DE EDITAIS - GUIA RÁPIDO                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+📦 INSTALAÇÃO RÁPIDA
+────────────────────────────────────────────────────────────────────────────────
+1. Instalar dependências:
+   pip install requests beautifulsoup4 lxml
+
+2. Testar conexão:
+   python testar_monitor.py
+
+3. Executar monitor:
+   python monitor_edital.py
+
+
+⚙️ CONFIGURAÇÃO (editar monitor_edital.py)
+────────────────────────────────────────────────────────────────────────────────
+
+# URL do edital
+URL_EDITAL = "https://seu-edital.com/pagina"
+
+# Palavras-chave para monitorar
+PALAVRAS_CHAVE = {
+    "Resultado",
+    "Homologação",
+    "Classificados",
+}
+
+# Intervalo entre checagens (em minutos)
+INTERVALO_MINUTOS = 10
+
+
+🚀 COMANDOS ÚTEIS
+────────────────────────────────────────────────────────────────────────────────
+
+# Execução normal
+python monitor_edital.py
+
+# Executar em segundo plano (Linux/Mac)
+nohup python monitor_edital.py > monitor.log 2>&1 &
+
+# Executar com timeout de 24 horas
+timeout 24h python monitor_edital.py
+
+# Ver log em tempo real (se rodando em background)
+tail -f monitor.log
+
+# Parar o script
+Ctrl + C (se rodando no terminal)
+kill <PID> (se rodando em background)
+
+
+🔔 QUANDO O SCRIPT ALERTA
+────────────────────────────────────────────────────────────────────────────────
+O script emite alerta visual e sonoro quando:
+
+✅ Detecta alguma palavra-chave configurada
+✅ Detecta mudança no conteúdo da página (hash diferente)
+
+
+📊 EXEMPLO DE ALERTA
+────────────────────────────────────────────────────────────────────────────────
+
+================================================================================
+🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 
+================================================================================
+[2024-12-15 10:30:00] [ALERTA] PALAVRAS-CHAVE DETECTADAS: resultado, homologação
+[2024-12-15 10:30:00] [ALERTA] MUDANÇA NO CONTEÚDO DA PÁGINA DETECTADA!
+[2024-12-15 10:30:00] [SUCESSO] Acesse: https://...
+================================================================================
+🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 🔔 
+================================================================================
+
+
+🐛 SOLUÇÃO DE PROBLEMAS
+────────────────────────────────────────────────────────────────────────────────
+
+❌ Erro de conexão
+   → Verifique internet e URL no navegador
+
+❌ Palavras não detectadas
+   → Verifique ortografia (não diferencia maiúsculas)
+   → Execute testar_monitor.py para debug
+
+❌ Script não emite som
+   → Windows: beep pode não funcionar
+   → Use alertas visuais ou implemente notificação desktop
+
+
+💡 DICAS
+────────────────────────────────────────────────────────────────────────────────
+
+• Use intervalos ≥ 10 minutos para não sobrecarregar o servidor
+• Mantenha o terminal aberto para receber alertas
+• Configure notificações por e-mail/Telegram para monitoramento remoto
+• Execute primeiro o testar_monitor.py para validar configuração
+
+
+📁 ARQUIVOS DO PROJETO
+────────────────────────────────────────────────────────────────────────────────
+
+monitor_edital.py       → Script principal de monitoramento
+testar_monitor.py       → Script de teste rápido
+requirements.txt        → Dependências do projeto
+README.md              → Documentação completa
+GUIA_RAPIDO.txt        → Este arquivo
+
+
+📞 SUPORTE
+────────────────────────────────────────────────────────────────────────────────
+
+Consulte o README.md para documentação detalhada

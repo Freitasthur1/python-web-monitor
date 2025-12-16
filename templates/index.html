@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor de Edital | Asas para Todos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Header -->
+    <header class="main-header">
+        <div class="header-container">
+            <div class="header-brand">
+                <svg class="logo-icon" width="40" height="40" viewBox="0 0 40 40" fill="none">
+                    <path d="M20 5L35 15V25L20 35L5 25V15L20 5Z" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <path d="M20 15L30 20L20 25L10 20L20 15Z" fill="currentColor"/>
+                    <line x1="20" y1="5" x2="20" y2="15" stroke="currentColor" stroke-width="2"/>
+                    <line x1="20" y1="25" x2="20" y2="35" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                <div class="header-titles">
+                    <h1>Monitor de Edital</h1>
+                    <p>Asas para Todos</p>
+                </div>
+            </div>
+
+            <div class="header-status">
+                <div class="status-indicator" id="headerStatus">
+                    <span class="status-pulse"></span>
+                    <span class="status-text">Sistema Ativo</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <nav class="sidebar-nav">
+                <button class="nav-btn active" onclick="showView('dashboard')" data-view="dashboard">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    <span>Dashboard</span>
+                </button>
+
+                <button class="nav-btn" onclick="showView('configuracoes')" data-view="configuracoes">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M12 1v6m0 6v6m5.7-13.7l-4.2 4.2m0 6l4.2 4.2M23 12h-6m-6 0H5m13.7 5.7l-4.2-4.2m0-6l-4.2-4.2"></path>
+                    </svg>
+                    <span>Configurações</span>
+                </button>
+
+                <button class="nav-btn" onclick="showView('notificacoes')" data-view="notificacoes">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                    </svg>
+                    <span>Notificações</span>
+                </button>
+
+                <button class="nav-btn" onclick="showView('logs')" data-view="logs">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14,2 14,8 20,8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <line x1="10" y1="9" x2="8" y2="9"></line>
+                    </svg>
+                    <span>Logs</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="control-buttons">
+                    <button class="btn-control btn-start" id="startBtn" onclick="startMonitor()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        Iniciar
+                    </button>
+                    <button class="btn-control btn-stop" id="stopBtn" onclick="stopMonitor()" disabled>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <rect x="6" y="6" width="12" height="12"></rect>
+                        </svg>
+                        Parar
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard View -->
+            <div class="content-view active" id="view-dashboard">
+                <!-- Status Cards -->
+                <div class="status-grid">
+                    <div class="status-card primary">
+                        <div class="card-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                            </svg>
+                        </div>
+                        <div class="card-content">
+                            <p class="card-label">Última Verificação</p>
+                            <h3 class="card-value" id="lastCheckTime">Aguardando...</h3>
+                        </div>
+                    </div>
+
+                    <div class="status-card accent">
+                        <div class="card-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                        </div>
+                        <div class="card-content">
+                            <p class="card-label">Novidades Detectadas</p>
+                            <h3 class="card-value" id="totalChanges">0</h3>
+                        </div>
+                    </div>
+
+                    <div class="status-card success">
+                        <div class="card-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 11 12 14 22 4"></polyline>
+                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                            </svg>
+                        </div>
+                        <div class="card-content">
+                            <p class="card-label">Total de Verificações</p>
+                            <h3 class="card-value" id="totalChecks">0</h3>
+                        </div>
+                    </div>
+
+                    <div class="status-card info">
+                        <div class="card-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                        </div>
+                        <div class="card-content">
+                            <p class="card-label">Próxima Verificação</p>
+                            <h3 class="card-value small" id="nextCheckTime">-</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity Feed -->
+                <div class="section-header">
+                    <h2>Feed de Atividades</h2>
+                    <p>Atualizações e alertas detectados no edital</p>
+                </div>
+
+                <div class="activity-feed" id="activityFeed">
+                    <div class="empty-state">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <p>Nenhuma atividade registrada ainda</p>
+                        <small>Inicie o monitoramento para começar a detectar mudanças</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configurações View -->
+            <div class="content-view" id="view-configuracoes">
+                <div class="section-header">
+                    <h2>Configurações</h2>
+                    <p>Personalize sua experiência no monitor</p>
+                </div>
+
+                <form class="config-form" onsubmit="saveConfig(event)">
+                    <div class="form-card">
+                        <h3 style="margin-bottom: 20px; color: var(--text-primary, #1a1a1a); font-size: 18px;">Aparência</h3>
+
+                        <div class="form-group">
+                            <label class="toggle-label">
+                                <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
+                                <span class="toggle-switch"></span>
+                                <span class="toggle-text">Modo Escuro</span>
+                            </label>
+                            <small class="form-hint">Ative para reduzir o brilho da tela</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="toggle-label">
+                                <input type="checkbox" id="autoRefreshToggle" checked>
+                                <span class="toggle-switch"></span>
+                                <span class="toggle-text">Atualização Automática</span>
+                            </label>
+                            <small class="form-hint">Atualiza o dashboard automaticamente a cada 2 segundos</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="toggle-label">
+                                <input type="checkbox" id="soundNotificationsToggle">
+                                <span class="toggle-switch"></span>
+                                <span class="toggle-text">Notificações Sonoras</span>
+                            </label>
+                            <small class="form-hint">Emite um som quando mudanças são detectadas (em breve)</small>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                Salvar Preferências
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Notificações View -->
+            <div class="content-view" id="view-notificacoes">
+                <div class="section-header">
+                    <h2>Notificações por Email</h2>
+                    <p>Receba alertas automáticos quando mudanças forem detectadas</p>
+                </div>
+
+                <form class="config-form" onsubmit="saveEmailConfig(event)">
+                    <div class="form-card">
+                        <div class="form-group">
+                            <label class="toggle-label">
+                                <input type="checkbox" id="emailEnabled" onchange="toggleEmailFields()">
+                                <span class="toggle-switch"></span>
+                                <span class="toggle-text">Ativar notificações por email</span>
+                            </label>
+                        </div>
+
+                        <div id="emailFields" style="display: none;">
+                            <div class="alert-info">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                </svg>
+                                <div>
+                                    <strong>Como funciona:</strong>
+                                    <p>Configure seu email abaixo e receba notificações automáticas sempre que o sistema detectar mudanças na página ou encontrar palavras-chave.</p>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Servidor SMTP</label>
+                                    <input type="text" id="smtpServer" class="form-input" placeholder="smtp.gmail.com">
+                                    <small class="form-hint">Gmail: smtp.gmail.com | Outlook: smtp-mail.outlook.com</small>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Porta SMTP</label>
+                                    <input type="number" id="smtpPort" class="form-input" placeholder="587">
+                                    <small class="form-hint">Geralmente: 587 (TLS) ou 465 (SSL)</small>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Email de Envio</label>
+                                    <input type="email" id="smtpUser" class="form-input" placeholder="seu@email.com">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Senha SMTP</label>
+                                    <input type="password" id="smtpPassword" class="form-input" placeholder="senha ou app password">
+                                    <small class="form-hint">Gmail: use "Senha de App" ao invés da senha normal</small>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Email Remetente</label>
+                                    <input type="email" id="fromEmail" class="form-input" placeholder="remetente@email.com">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Email para Notificações</label>
+                                    <input type="email" id="toEmail" class="form-input" placeholder="destino@email.com">
+                                    <small class="form-hint">Email onde você receberá os alertas</small>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="useTLS" checked>
+                                    <span class="toggle-switch"></span>
+                                    <span class="toggle-text">Usar conexão TLS (recomendado)</span>
+                                </label>
+                            </div>
+
+                            <div class="alert-warning">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                </svg>
+                                <div>
+                                    <strong>Dica para Gmail:</strong>
+                                    <ol>
+                                        <li>Acesse sua Conta Google</li>
+                                        <li>Vá em "Segurança" → "Verificação em duas etapas"</li>
+                                        <li>Gere uma "Senha de app" para este sistema</li>
+                                        <li>Use a senha de app no campo acima</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                                Salvar Configurações
+                            </button>
+                            <button type="button" class="btn-secondary" onclick="testEmail()" id="testEmailBtn" disabled>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                    <polyline points="22,6 12,13 2,6"></polyline>
+                                </svg>
+                                Testar Email
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Logs View -->
+            <div class="content-view" id="view-logs">
+                <div class="section-header">
+                    <h2>Logs do Sistema</h2>
+                    <p>Histórico completo de todas as verificações e eventos</p>
+                </div>
+
+                <div class="logs-card">
+                    <div class="logs-header">
+                        <h3>Console de Logs</h3>
+                        <button class="btn-clear" onclick="clearLogs()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                            Limpar
+                        </button>
+                    </div>
+                    <div class="logs-container" id="logsContainer">
+                        <div class="logs-empty">
+                            <p>Nenhum log disponível</p>
+                            <small>Os logs aparecerão aqui quando o monitoramento iniciar</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

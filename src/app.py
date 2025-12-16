@@ -1,0 +1,347 @@
+#!/usr/bin/env python3
+"""
+Aplicação Web para Monitoramento de Editais
+Servidor Flask com interface web e API REST
+"""
+
+from flask import Flask, render_template, jsonify, request, send_from_directory
+from flask_cors import CORS
+import threading
+import json
+import os
+import sys
+from datetime import datetime
+from typing import List, Dict
+import time
+
+# Adiciona o diretório pai ao path para importar módulos
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.monitor import MonitorEdital
+from src.email_notifier import EmailNotifier
+
+# Configuração de paths
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CONFIG_DIR = os.path.join(BASE_DIR, 'config')
+LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
+STATIC_DIR = os.path.join(BASE_DIR, 'static')
+
+# Cria diretórios se não existirem
+os.makedirs(CONFIG_DIR, exist_ok=True)
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+app = Flask(__name__,
+            template_folder=TEMPLATE_DIR,
+            static_folder=STATIC_DIR)
+CORS(app)
+
+# Configurações
+CONFIG_FILE = os.path.join(CONFIG_DIR, 'config.json')
+LOGS_MAX = 100
+
+# Estado global do monitor
+monitor_state = {
+    'running': False,
+    'logs': [],
+    'current_check': 0,
+    'last_check': None,
+    'next_check': None,
+    'palavras_encontradas': [],
+    'mudancas_detectadas': 0,
+    'thread': None,
+    'monitor': None,
+    'email_notifier': None
+}
+
+
+def load_config() -> Dict:
+    """Carrega configuração do arquivo JSON"""
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+
+    # Configuração padrão
+    default_config = {
+        'url': 'https://exemplo.com/edital',
+        'palavras_chave': [
+            'Resultado',
+            'Homologação',
+            'Classificados'
+        ],
+        'intervalo_minutos': 10,
+        'servidor_host': '0.0.0.0',
+        'servidor_porta': 5000,
+        'email': {
+            'enabled': False,
+            'smtp_server': 'smtp.gmail.com',
+            'smtp_port': 587,
+            'smtp_user': '',
+            'smtp_password': '',
+            'from_email': '',
+            'to_email': '',
+            'use_tls': True
+        }
+    }
+    save_config(default_config)
+    return default_config
+
+
+def save_config(config: Dict):
+    """Salva configuração no arquivo JSON"""
+    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+        json.dump(config, f, indent=4, ensure_ascii=False)
+
+
+def add_log(mensagem: str, tipo: str = "INFO"):
+    """Adiciona log ao estado global"""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_entry = {
+        'timestamp': timestamp,
+        'tipo': tipo,
+        'mensagem': mensagem
+    }
+
+    monitor_state['logs'].insert(0, log_entry)
+
+    if len(monitor_state['logs']) > LOGS_MAX:
+        monitor_state['logs'] = monitor_state['logs'][:LOGS_MAX]
+
+    print(f"[{timestamp}] [{tipo}] {mensagem}")
+
+
+def monitor_loop():
+    """Loop principal de monitoramento"""
+    config = load_config()
+
+    url = config['url']
+    palavras_chave = config['palavras_chave']
+    intervalo_minutos = config['intervalo_minutos']
+    intervalo_segundos = intervalo_minutos * 60
+
+    # Inicializa monitor
+    monitor_state['monitor'] = MonitorEdital(url, palavras_chave, intervalo_minutos)
+
+    # Inicializa notificador de email
+    if config.get('email', {}).get('enabled', False):
+        monitor_state['email_notifier'] = EmailNotifier(config['email'])
+        add_log("Sistema de notificação por email ativado", "INFO")
+
+    add_log("Monitoramento iniciado", "SUCESSO")
+    add_log(f"URL: {url}", "INFO")
+    add_log(f"Intervalo: {intervalo_minutos} minutos", "INFO")
+
+    while monitor_state['running']:
+        try:
+            monitor_state['current_check'] += 1
+            check_num = monitor_state['current_check']
+
+            add_log(f"Verificação #{check_num}", "INFO")
+            monitor_state['last_check'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # Busca e processa página
+            monitor = monitor_state['monitor']
+            soup = monitor.buscar_pagina()
+            conteudo = monitor.extrair_conteudo_relevante(soup)
+
+            # Verifica palavras-chave
+            palavras_encontradas = monitor.verificar_palavras_chave(conteudo)
+
+            # Verifica mudanças
+            mudanca_conteudo, _ = monitor.verificar_mudancas(conteudo)
+
+            if mudanca_conteudo:
+                monitor_state['mudancas_detectadas'] += 1
+
+            # Registra resultados
+            alerta_enviado = False
+            if palavras_encontradas or mudanca_conteudo:
+                monitor_state['palavras_encontradas'] = palavras_encontradas
+
+                if palavras_encontradas:
+                    add_log(f"Palavras-chave detectadas: {', '.join(palavras_encontradas)}", "ALERTA")
+
+                if mudanca_conteudo:
+                    add_log("Mudança no conteúdo detectada!", "ALERTA")
+
+                # Envia notificação por email
+                if monitor_state['email_notifier']:
+                    if monitor_state['email_notifier'].enviar_alerta(
+                        url, palavras_encontradas, mudanca_conteudo
+                    ):
+                        add_log("Notificação por email enviada", "SUCESSO")
+                        alerta_enviado = True
+                    else:
+                        add_log("Falha ao enviar notificação por email", "ERRO")
+            else:
+                add_log("Nenhuma mudança detectada", "INFO")
+
+            # Calcula próxima verificação
+            proxima = datetime.now().timestamp() + intervalo_segundos
+            monitor_state['next_check'] = datetime.fromtimestamp(proxima).strftime("%Y-%m-%d %H:%M:%S")
+
+            add_log(f"Próxima verificação: {monitor_state['next_check']}", "INFO")
+
+            # Aguarda intervalo
+            time.sleep(intervalo_segundos)
+
+        except Exception as e:
+            add_log(f"Erro: {str(e)}", "ERRO")
+            time.sleep(60)
+
+    add_log("Monitoramento interrompido", "ALERTA")
+
+
+@app.route('/')
+def index():
+    """Página principal"""
+    return render_template('index.html')
+
+
+@app.route('/api/status')
+def get_status():
+    """Retorna status atual do monitor"""
+    return jsonify({
+        'running': monitor_state['running'],
+        'current_check': monitor_state['current_check'],
+        'last_check': monitor_state['last_check'],
+        'next_check': monitor_state['next_check'],
+        'palavras_encontradas': monitor_state['palavras_encontradas'],
+        'mudancas_detectadas': monitor_state['mudancas_detectadas']
+    })
+
+
+@app.route('/api/logs')
+def get_logs():
+    """Retorna logs recentes"""
+    limit = request.args.get('limit', 50, type=int)
+    return jsonify({'logs': monitor_state['logs'][:limit]})
+
+
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    """Retorna configuração atual"""
+    config = load_config()
+    # Remove senha do SMTP antes de enviar
+    if 'email' in config and 'smtp_password' in config['email']:
+        config_copy = config.copy()
+        config_copy['email'] = config['email'].copy()
+        config_copy['email']['smtp_password'] = '***' if config['email']['smtp_password'] else ''
+        return jsonify(config_copy)
+    return jsonify(config)
+
+
+@app.route('/api/config', methods=['POST'])
+def update_config():
+    """Atualiza configuração"""
+    try:
+        new_config = request.json
+        old_config = load_config()
+
+        # IMPORTANTE: Proteção contra alterações não autorizadas
+        # Apenas desenvolvedores podem alterar estas configurações editando o arquivo diretamente
+
+        # 1. URL é fixa
+        new_config['url'] = old_config.get('url', 'https://fgduque.org.br/edital/projeto-asas-para-todos-ufersa-fgd-anac-edital-18-2024-1718822792')
+
+        # 2. Palavras-chave são fixas
+        new_config['palavras_chave'] = old_config.get('palavras_chave', ['Resultado', 'Homologação', 'Classificados'])
+
+        # 3. Intervalo de monitoramento é fixo
+        new_config['intervalo_minutos'] = old_config.get('intervalo_minutos', 10)
+
+        # 4. Configurações de servidor são fixas
+        new_config['servidor_host'] = old_config.get('servidor_host', '0.0.0.0')
+        new_config['servidor_porta'] = old_config.get('servidor_porta', 5000)
+
+        # Se a senha do SMTP for '***', mantém a senha atual
+        if 'email' in new_config and new_config['email'].get('smtp_password') == '***':
+            if 'email' in old_config:
+                new_config['email']['smtp_password'] = old_config['email'].get('smtp_password', '')
+
+        save_config(new_config)
+        add_log("Configuração de email atualizada", "SUCESSO")
+
+        return jsonify({'message': 'Configuração atualizada com sucesso'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/test-email', methods=['POST'])
+def test_email():
+    """Testa configuração de email"""
+    try:
+        config = load_config()
+        if not config.get('email', {}).get('enabled', False):
+            return jsonify({'error': 'Notificações por email desabilitadas'}), 400
+
+        notifier = EmailNotifier(config['email'])
+        sucesso, mensagem = notifier.testar_conexao()
+
+        if sucesso:
+            # Envia email de teste
+            notifier.enviar_alerta(
+                url="https://exemplo.com/teste",
+                palavras_encontradas=["teste"],
+                mudanca_conteudo=True
+            )
+            return jsonify({'message': 'Email de teste enviado com sucesso'})
+        else:
+            return jsonify({'error': mensagem}), 400
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/start', methods=['POST'])
+def start_monitor():
+    """Inicia monitoramento"""
+    if monitor_state['running']:
+        return jsonify({'error': 'Monitor já está em execução'}), 400
+
+    monitor_state['running'] = True
+    monitor_state['current_check'] = 0
+    monitor_state['mudancas_detectadas'] = 0
+    monitor_state['palavras_encontradas'] = []
+
+    thread = threading.Thread(target=monitor_loop, daemon=True)
+    thread.start()
+    monitor_state['thread'] = thread
+
+    return jsonify({'message': 'Monitoramento iniciado'})
+
+
+@app.route('/api/stop', methods=['POST'])
+def stop_monitor():
+    """Para monitoramento"""
+    if not monitor_state['running']:
+        return jsonify({'error': 'Monitor não está em execução'}), 400
+
+    monitor_state['running'] = False
+    return jsonify({'message': 'Monitoramento parado'})
+
+
+@app.route('/api/clear-logs', methods=['POST'])
+def clear_logs():
+    """Limpa logs"""
+    monitor_state['logs'] = []
+    return jsonify({'message': 'Logs limpos'})
+
+
+if __name__ == '__main__':
+    config = load_config()
+
+    print("=" * 80)
+    print("Monitor de Editais - Servidor Web v2.0")
+    print("=" * 80)
+    print(f"Acesse: http://{config['servidor_host']}:{config['servidor_porta']}")
+    print(f"Ou: http://localhost:{config['servidor_porta']}")
+    print("=" * 80)
+
+    app.run(
+        host=config['servidor_host'],
+        port=config['servidor_porta'],
+        debug=False,
+        threaded=True
+    )

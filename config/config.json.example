@@ -1,0 +1,14 @@
+{
+    "url": "https://exemplo.com/edital",
+    "palavras_chave": [
+        "Resultado",
+        "Resultado Final",
+        "Resultado Preliminar",
+        "Homologação",
+        "Classificados",
+        "Notas"
+    ],
+    "intervalo_minutos": 10,
+    "servidor_host": "0.0.0.0",
+    "servidor_porta": 5000
+}

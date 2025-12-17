@@ -1003,6 +1003,11 @@ body.dark-mode .section-header p {
     color: #8b949e;
 }
 
+/* Headers e títulos no modo escuro */
+body.dark-mode h3 {
+    color: #c9d1d9 !important;
+}
+
 /* Logs no modo escuro */
 body.dark-mode .logs-card {
     background: #161b22;

@@ -13,10 +13,11 @@ document.addEventListener('DOMContentLoaded', function() {
     updateStatus();
     updateLogs();
 
-    // Update status every 2 seconds
+    // Update status, logs and subscribers every 2 seconds
     updateInterval = setInterval(() => {
         updateStatus();
         updateLogs();
+        loadSubscribers();
     }, 2000);
 });
 

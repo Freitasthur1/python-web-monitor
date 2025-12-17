@@ -53,6 +53,7 @@ monitor_state = {
     'palavras_encontradas': [],
     'mudancas_detectadas': 0,
     'thread': None,
+    'thread_id': None,  # ID único da thread ativa
     'monitor': None,
     'email_notifier': None
 }
@@ -161,7 +162,7 @@ def add_log(mensagem: str, tipo: str = "INFO"):
     print(f"[{timestamp}] [{tipo}] {mensagem}")
 
 
-def monitor_loop():
+def monitor_loop(thread_id):
     """Loop principal de monitoramento"""
     config = load_config()
 
@@ -182,7 +183,7 @@ def monitor_loop():
     add_log(f"URL: {url}", "INFO")
     add_log(f"Intervalo: {intervalo_minutos} minutos", "INFO")
 
-    while monitor_state['running']:
+    while monitor_state['running'] and monitor_state['thread_id'] == thread_id:
         try:
             monitor_state['current_check'] += 1
             check_num = monitor_state['current_check']
@@ -201,21 +202,19 @@ def monitor_loop():
             # Verifica mudanças
             mudanca_conteudo, _ = monitor.verificar_mudancas(conteudo)
 
+            # Atualiza estado com palavras encontradas (para dashboard)
+            monitor_state['palavras_encontradas'] = palavras_encontradas
+
+            # Registra palavras-chave encontradas (apenas informativo)
+            if palavras_encontradas:
+                add_log(f"Palavras-chave no site: {', '.join(palavras_encontradas)}", "INFO")
+
+            # IMPORTANTE: Só envia notificação quando houver MUDANÇA REAL no conteúdo
             if mudanca_conteudo:
                 monitor_state['mudancas_detectadas'] += 1
+                add_log("🚨 MUDANÇA NO CONTEÚDO DETECTADA!", "ALERTA")
 
-            # Registra resultados
-            alerta_enviado = False
-            if palavras_encontradas or mudanca_conteudo:
-                monitor_state['palavras_encontradas'] = palavras_encontradas
-
-                if palavras_encontradas:
-                    add_log(f"Palavras-chave detectadas: {', '.join(palavras_encontradas)}", "ALERTA")
-
-                if mudanca_conteudo:
-                    add_log("Mudança no conteúdo detectada!", "ALERTA")
-
-                # Envia notificação por email
+                # Envia notificação por email APENAS quando há mudança
                 if monitor_state['email_notifier']:
                     # Carrega lista de emails inscritos
                     subscribers = load_subscribers()
@@ -225,14 +224,13 @@ def monitor_loop():
                         if monitor_state['email_notifier'].enviar_alerta(
                             url, palavras_encontradas, mudanca_conteudo, destinatarios=subscribers
                         ):
-                            add_log(f"Notificação enviada para {len(subscribers)} inscrito(s)", "SUCESSO")
-                            alerta_enviado = True
+                            add_log(f"✅ Notificação enviada para {len(subscribers)} inscrito(s)", "SUCESSO")
                         else:
-                            add_log("Falha ao enviar notificações", "ERRO")
+                            add_log("❌ Falha ao enviar notificações", "ERRO")
                     else:
-                        add_log("Nenhum email inscrito para notificar", "INFO")
+                        add_log("⚠️  Mudança detectada mas nenhum email inscrito para notificar", "ALERTA")
             else:
-                add_log("Nenhuma mudança detectada", "INFO")
+                add_log("Nenhuma mudança detectada - site sem alterações", "INFO")
 
             # Calcula próxima verificação
             proxima = datetime.now().timestamp() + intervalo_segundos
@@ -240,12 +238,21 @@ def monitor_loop():
 
             add_log(f"Próxima verificação: {monitor_state['next_check']}", "INFO")
 
-            # Aguarda intervalo
-            time.sleep(intervalo_segundos)
+            # Aguarda intervalo - verifica thread_id a cada segundo para responder rapidamente ao stop
+            for _ in range(intervalo_segundos):
+                if monitor_state['thread_id'] != thread_id:
+                    add_log("Thread de monitoramento substituída, encerrando esta thread", "INFO")
+                    return
+                time.sleep(1)
 
         except Exception as e:
             add_log(f"Erro: {str(e)}", "ERRO")
-            time.sleep(60)
+            # Aguarda 60 segundos em caso de erro, verificando thread_id
+            for _ in range(60):
+                if monitor_state['thread_id'] != thread_id:
+                    add_log("Thread de monitoramento substituída, encerrando esta thread", "INFO")
+                    return
+                time.sleep(1)
 
     add_log("Monitoramento interrompido", "ALERTA")
 
@@ -371,12 +378,17 @@ def start_monitor():
     if monitor_state['running']:
         return jsonify({'error': 'Monitor já está em execução'}), 400
 
+    # Gera ID único para esta thread
+    import uuid
+    thread_id = str(uuid.uuid4())
+
     monitor_state['running'] = True
     monitor_state['current_check'] = 0
     monitor_state['mudancas_detectadas'] = 0
     monitor_state['palavras_encontradas'] = []
+    monitor_state['thread_id'] = thread_id
 
-    thread = threading.Thread(target=monitor_loop, daemon=True)
+    thread = threading.Thread(target=monitor_loop, args=(thread_id,), daemon=True)
     thread.start()
     monitor_state['thread'] = thread
 
@@ -390,6 +402,7 @@ def stop_monitor():
         return jsonify({'error': 'Monitor não está em execução'}), 400
 
     monitor_state['running'] = False
+    monitor_state['thread_id'] = None  # Invalida o ID da thread
     return jsonify({'message': 'Monitoramento parado'})
 
 
@@ -445,6 +458,120 @@ def remove_subscriber_endpoint(email):
             return jsonify({'message': 'Email removido com sucesso'})
         else:
             return jsonify({'error': 'Email não encontrado'}), 404
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/check-now', methods=['POST'])
+def check_now():
+    """Força uma verificação imediata (apenas para testes)"""
+    try:
+        if not monitor_state['running']:
+            return jsonify({'error': 'Monitor não está em execução'}), 400
+
+        monitor = monitor_state['monitor']
+        if not monitor:
+            return jsonify({'error': 'Monitor não inicializado'}), 400
+
+        add_log("Verificação manual iniciada", "INFO")
+
+        # Busca e processa página
+        soup = monitor.buscar_pagina()
+        conteudo = monitor.extrair_conteudo_relevante(soup)
+
+        # Verifica palavras-chave
+        palavras_encontradas = monitor.verificar_palavras_chave(conteudo)
+
+        # Verifica mudanças
+        mudanca_conteudo, hash_atual = monitor.verificar_mudancas(conteudo)
+
+        resultado = {
+            'mudanca_detectada': mudanca_conteudo,
+            'palavras_encontradas': palavras_encontradas,
+            'hash_atual': hash_atual,
+            'tamanho_conteudo': len(conteudo)
+        }
+
+        if mudanca_conteudo:
+            add_log("Verificação manual: 🚨 MUDANÇA DETECTADA!", "ALERTA")
+        else:
+            add_log("Verificação manual: Nenhuma mudança detectada - site sem alterações", "INFO")
+
+        if palavras_encontradas:
+            add_log(f"Verificação manual: Palavras-chave no site: {', '.join(palavras_encontradas)}", "INFO")
+
+        return jsonify(resultado)
+
+    except Exception as e:
+        add_log(f"Erro na verificação manual: {str(e)}", "ERRO")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/diagnostic', methods=['GET'])
+def diagnostic():
+    """Retorna informações de diagnóstico sobre o monitoramento"""
+    try:
+        if not monitor_state['running']:
+            return jsonify({'error': 'Monitor não está em execução. Inicie o monitoramento primeiro.'}), 400
+
+        monitor = monitor_state['monitor']
+        if not monitor:
+            return jsonify({'error': 'Monitor não inicializado'}), 400
+
+        # Busca página atual
+        soup = monitor.buscar_pagina()
+        conteudo = monitor.extrair_conteudo_relevante(soup)
+
+        # Calcula hash atual (sem alterar o hash_anterior)
+        hash_atual = monitor.calcular_hash(conteudo)
+
+        # Verifica palavras-chave
+        palavras_encontradas = monitor.verificar_palavras_chave(conteudo)
+
+        # Preview do conteúdo (primeiros 500 caracteres)
+        preview = conteudo[:500] + "..." if len(conteudo) > 500 else conteudo
+
+        resultado = {
+            'url': monitor.url,
+            'hash_anterior': monitor.hash_anterior,
+            'hash_atual': hash_atual,
+            'hash_mudou': monitor.hash_anterior is not None and hash_atual != monitor.hash_anterior,
+            'palavras_chave_configuradas': monitor.palavras_chave,
+            'palavras_encontradas': palavras_encontradas,
+            'tamanho_conteudo': len(conteudo),
+            'preview_conteudo': preview,
+            'intervalo_segundos': monitor.intervalo_segundos
+        }
+
+        add_log("Diagnóstico executado", "INFO")
+        return jsonify(resultado)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/reset-hash', methods=['POST'])
+def reset_hash():
+    """Reseta o hash anterior - a próxima verificação detectará mudança (apenas para testes)"""
+    try:
+        if not monitor_state['running']:
+            return jsonify({'error': 'Monitor não está em execução'}), 400
+
+        monitor = monitor_state['monitor']
+        if not monitor:
+            return jsonify({'error': 'Monitor não inicializado'}), 400
+
+        hash_anterior = monitor.hash_anterior
+        monitor.hash_anterior = None
+
+        add_log("Hash anterior resetado - próxima verificação detectará mudança", "ALERTA")
+
+        return jsonify({
+            'message': 'Hash resetado com sucesso',
+            'hash_anterior': hash_anterior,
+            'observacao': 'A próxima verificação detectará uma mudança mesmo que o conteúdo não tenha sido alterado'
+        })
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500

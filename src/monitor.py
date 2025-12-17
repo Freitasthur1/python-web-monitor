@@ -27,13 +27,10 @@ class MonitorEdital:
         self.palavras_chave = [palavra.lower() for palavra in palavras_chave]
         self.intervalo_segundos = intervalo_minutos * 60
         self.hash_anterior: Optional[str] = None
+        # Headers simplificados - requests lida automaticamente com gzip/deflate
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
                          '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
         }
 
     def calcular_hash(self, conteudo: str) -> str:
@@ -50,24 +47,50 @@ class MonitorEdital:
         try:
             response = requests.get(self.url, headers=self.headers, timeout=30)
             response.raise_for_status()
-            return BeautifulSoup(response.content, 'html.parser')
+
+            # Força encoding UTF-8 para garantir caracteres corretos
+            response.encoding = 'utf-8'
+
+            # Usa response.text ao invés de response.content para respeitar o encoding
+            return BeautifulSoup(response.text, 'lxml')
         except requests.exceptions.RequestException as e:
             raise Exception(f"Erro ao buscar página: {str(e)}")
 
     def extrair_conteudo_relevante(self, soup: BeautifulSoup) -> str:
         """Extrai conteúdo relevante da página"""
-        seletores = [
-            'div.content', 'div.edital', 'div.resultado',
-            'div.main-content', 'table', 'section.content',
-            'article', 'div[class*="content"]', 'div[id*="content"]'
+        conteudo_total = []
+
+        # Estratégia 1: Tenta extrair seção principal (mais específico)
+        section_principal = soup.find('section', class_='slice')
+        if section_principal:
+            conteudo_total.append(section_principal.get_text(strip=True))
+
+        # Estratégia 2: Extrai todas as tabelas (dados estruturados importantes)
+        tabelas = soup.find_all('table')
+        for tabela in tabelas:
+            conteudo_total.append(tabela.get_text(strip=True))
+
+        # Estratégia 3: Seletores genéricos adicionais
+        seletores_adicionais = [
+            'div.wrapper',
+            'div.content',
+            'div.edital',
+            'div.resultado',
+            'div.main-content',
+            'article',
+            'div[class*="content"]',
+            'div[id*="content"]'
         ]
 
-        conteudo_total = []
-        for seletor in seletores:
+        for seletor in seletores_adicionais:
             elementos = soup.select(seletor)
             for elemento in elementos:
-                conteudo_total.append(elemento.get_text(strip=True))
+                texto = elemento.get_text(strip=True)
+                # Evita duplicação: só adiciona se não estiver vazio e não for muito similar ao já coletado
+                if texto and texto not in ' '.join(conteudo_total):
+                    conteudo_total.append(texto)
 
+        # Fallback: Se nada foi encontrado, usa body inteiro
         if not conteudo_total:
             body = soup.find('body')
             if body:

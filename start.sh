@@ -47,5 +47,6 @@ echo ""
 echo "Iniciando servidor..."
 echo ""
 
-# Inicia o servidor
-python3 run.py
+# Inicia o servidor com buffering desabilitado para logs em tempo real
+# -u = unbuffered (logs aparecem imediatamente)
+python3 -u run.py

@@ -159,7 +159,8 @@ def add_log(mensagem: str, tipo: str = "INFO"):
     if len(monitor_state['logs']) > LOGS_MAX:
         monitor_state['logs'] = monitor_state['logs'][:LOGS_MAX]
 
-    print(f"[{timestamp}] [{tipo}] {mensagem}")
+    # Força flush para garantir que logs apareçam imediatamente
+    print(f"[{timestamp}] [{tipo}] {mensagem}", flush=True)
 
 
 def monitor_loop(thread_id):
@@ -212,7 +213,7 @@ def monitor_loop(thread_id):
             # IMPORTANTE: Só envia notificação quando houver MUDANÇA REAL no conteúdo
             if mudanca_conteudo:
                 monitor_state['mudancas_detectadas'] += 1
-                add_log("🚨 MUDANÇA NO CONTEÚDO DETECTADA!", "ALERTA")
+                add_log("MUDANÇA NO CONTEÚDO DETECTADA!", "ALERTA")
 
                 # Envia notificação por email APENAS quando há mudança
                 if monitor_state['email_notifier']:
@@ -224,11 +225,11 @@ def monitor_loop(thread_id):
                         if monitor_state['email_notifier'].enviar_alerta(
                             url, palavras_encontradas, mudanca_conteudo, destinatarios=subscribers
                         ):
-                            add_log(f"✅ Notificação enviada para {len(subscribers)} inscrito(s)", "SUCESSO")
+                            add_log(f"Notificação enviada para {len(subscribers)} inscrito(s)", "SUCESSO")
                         else:
-                            add_log("❌ Falha ao enviar notificações", "ERRO")
+                            add_log("Falha ao enviar notificações", "ERRO")
                     else:
-                        add_log("⚠️  Mudança detectada mas nenhum email inscrito para notificar", "ALERTA")
+                        add_log("Mudança detectada mas nenhum email inscrito para notificar", "ALERTA")
             else:
                 add_log("Nenhuma mudança detectada - site sem alterações", "INFO")
 
@@ -494,7 +495,7 @@ def check_now():
         }
 
         if mudanca_conteudo:
-            add_log("Verificação manual: 🚨 MUDANÇA DETECTADA!", "ALERTA")
+            add_log("Verificação manual: MUDANÇA DETECTADA!", "ALERTA")
         else:
             add_log("Verificação manual: Nenhuma mudança detectada - site sem alterações", "INFO")
 

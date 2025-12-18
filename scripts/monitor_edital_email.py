@@ -78,7 +78,7 @@ class MonitorEditalComEmail:
             <html>
               <body style="font-family: Arial, sans-serif;">
                 <div style="background-color: #f0f0f0; padding: 20px; border-radius: 10px;">
-                  <h2 style="color: #d32f2f;">🔔 Alerta de Monitoramento de Edital</h2>
+                  <h2 style="color: #d32f2f;">Alerta de Monitoramento de Edital</h2>
                   <hr style="border: 1px solid #ddd;">
                   <div style="background-color: white; padding: 15px; border-radius: 5px; margin-top: 10px;">
                     {corpo}
@@ -104,7 +104,7 @@ class MonitorEditalComEmail:
                            self.email_config['senha'])
                 server.send_message(msg)
             
-            self.log_mensagem("✉️ E-mail de notificação enviado com sucesso", "SUCESSO")
+            self.log_mensagem("E-mail de notificação enviado com sucesso", "SUCESSO")
             return True
             
         except Exception as e:
@@ -155,7 +155,7 @@ class MonitorEditalComEmail:
     def exibir_alerta(self, palavras_encontradas: Set[str], mudanca_conteudo: bool):
         """Exibe alertas e envia e-mail se configurado"""
         print("\n" + "=" * 80)
-        print("🔔 " * 20)
+        print("ALERTA " * 20)
         print("=" * 80)
         
         mensagens = []
@@ -173,7 +173,7 @@ class MonitorEditalComEmail:
         self.log_mensagem(f"Acesse: {self.url}", "SUCESSO")
         
         print("=" * 80)
-        print("🔔 " * 20)
+        print("ALERTA " * 20)
         print("=" * 80 + "\n")
         
         # Emite beeps
@@ -183,7 +183,7 @@ class MonitorEditalComEmail:
         
         # Envia e-mail se configurado
         if self.email_config and mensagens:
-            assunto = "🔔 Alerta: Atualização no Edital"
+            assunto = "Alerta: Atualização no Edital"
             corpo = ''.join(mensagens)
             self.enviar_email(assunto, corpo)
     
@@ -195,10 +195,10 @@ class MonitorEditalComEmail:
         self.log_mensagem(f"Intervalo: {self.intervalo_segundos // 60} minutos")
         
         if self.email_config:
-            self.log_mensagem(f"✉️ Notificações por e-mail: ATIVADAS", "SUCESSO")
+            self.log_mensagem(f"Notificações por e-mail: ATIVADAS", "SUCESSO")
             self.log_mensagem(f"   Destinatário: {self.email_config['destinatario']}")
         else:
-            self.log_mensagem("✉️ Notificações por e-mail: DESATIVADAS")
+            self.log_mensagem("Notificações por e-mail: DESATIVADAS")
         
         print("\n" + "-" * 80 + "\n")
         

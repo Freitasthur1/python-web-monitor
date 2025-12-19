@@ -41,6 +41,9 @@ config/config.json
 # Project specific - Data files (user data)
 data/subscribers.json
 
+# Project specific - Scripts with credentials
+scripts/duckdns-update.sh
+
 # Project specific - Log files
 logs/*.log
 *.log

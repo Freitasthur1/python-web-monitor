@@ -11,6 +11,7 @@ import json
 import os
 import sys
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import List, Dict
 import time
 
@@ -19,6 +20,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.monitor import MonitorEdital
 from src.email_notifier import EmailNotifier
+
+# Timezone de Brasília
+BRASILIA_TZ = ZoneInfo("America/Sao_Paulo")
+
+def get_brasilia_time():
+    """Retorna o datetime atual no horário de Brasília"""
+    return datetime.now(BRASILIA_TZ)
 
 # Configuração de paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -130,7 +138,7 @@ def add_subscriber(email: str) -> bool:
     if email_lower not in [e.lower() for e in emails]:
         emails.append(email_lower)
         save_subscribers(emails)
-        add_log(f"Novo inscrito: {email_lower}", "INFO")
+        add_log("Novo inscrito adicionado com sucesso", "INFO")
         return True
     return False
 
@@ -151,7 +159,7 @@ def remove_subscriber(email: str) -> bool:
 
 def add_log(mensagem: str, tipo: str = "INFO"):
     """Adiciona log ao estado global"""
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = get_brasilia_time().strftime("%Y-%m-%d %H:%M:%S")
     log_entry = {
         'timestamp': timestamp,
         'tipo': tipo,
@@ -238,7 +246,7 @@ def monitor_loop(thread_id):
             check_num = monitor_state['current_check']
 
             add_log(f"Verificação #{check_num}", "INFO")
-            monitor_state['last_check'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            monitor_state['last_check'] = get_brasilia_time().strftime("%Y-%m-%d %H:%M:%S")
 
             # Busca e processa página
             monitor = monitor_state['monitor']
@@ -282,8 +290,8 @@ def monitor_loop(thread_id):
                 add_log("Nenhuma mudança detectada - site sem alterações", "INFO")
 
             # Calcula próxima verificação
-            proxima = datetime.now().timestamp() + intervalo_segundos
-            monitor_state['next_check'] = datetime.fromtimestamp(proxima).strftime("%Y-%m-%d %H:%M:%S")
+            proxima = get_brasilia_time().timestamp() + intervalo_segundos
+            monitor_state['next_check'] = datetime.fromtimestamp(proxima, BRASILIA_TZ).strftime("%Y-%m-%d %H:%M:%S")
 
             add_log(f"Próxima verificação: {monitor_state['next_check']}", "INFO")
 

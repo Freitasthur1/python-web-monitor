@@ -9,6 +9,14 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Optional
 from datetime import datetime
+from zoneinfo import ZoneInfo
+
+# Timezone de Brasília
+BRASILIA_TZ = ZoneInfo("America/Sao_Paulo")
+
+def get_brasilia_time():
+    """Retorna o datetime atual no horário de Brasília"""
+    return datetime.now(BRASILIA_TZ)
 
 
 class EmailNotifier:
@@ -77,7 +85,7 @@ class EmailNotifier:
 
                 # Cria mensagem
                 msg = MIMEMultipart('alternative')
-                msg['Subject'] = f'[Monitor de Editais] Alerta Detectado - {datetime.now().strftime("%d/%m/%Y %H:%M")}'
+                msg['Subject'] = f'[Monitor de Editais] Alerta Detectado - {get_brasilia_time().strftime("%d/%m/%Y %H:%M")}'
                 msg['From'] = self.from_email
                 msg['To'] = email_destino
 
@@ -119,7 +127,7 @@ class EmailNotifier:
             "ALERTA DO MONITOR DE EDITAIS",
             "=" * 50,
             "",
-            f"Data/Hora: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}",
+            f"Data/Hora: {get_brasilia_time().strftime('%d/%m/%Y %H:%M:%S')}",
             f"URL: {url}",
             ""
         ]
@@ -185,7 +193,7 @@ class EmailNotifier:
             <div class="container">
                 <div class="header">
                     <h1>Alerta do Monitor de Editais</h1>
-                    <p>{datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}</p>
+                    <p>{get_brasilia_time().strftime('%d/%m/%Y às %H:%M:%S')}</p>
                 </div>
                 <div class="content">
                     {mudanca_html}

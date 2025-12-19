@@ -49,3 +49,12 @@ Thumbs.db
 
 # Cache
 .cache/
+
+# Documentation (deployment guides - keep local only)
+docs/ESPECIFICACOES_TECNICAS_HOSPEDAGEM.md
+docs/GUIA_DEPLOY_GRATUITO.md
+docs/RESUMO_REQUISITOS.md
+docs/GUIA_ACESSO_VM.md
+
+# Claude Code settings
+.claude/

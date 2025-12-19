@@ -299,127 +299,39 @@ def get_config():
 
 @app.route('/api/config', methods=['POST'])
 def update_config():
-    """Atualiza configuração"""
-    try:
-        new_config = request.json
-        old_config = load_config()
-
-        # IMPORTANTE: Proteção contra alterações não autorizadas
-        # Apenas desenvolvedores podem alterar estas configurações editando o arquivo diretamente
-
-        # 1. URL é fixa
-        new_config['url'] = old_config.get('url', 'https://fgduque.org.br/edital/projeto-asas-para-todos-ufersa-fgd-anac-edital-18-2024-1718822792')
-
-        # 2. Palavras-chave são fixas
-        new_config['palavras_chave'] = old_config.get('palavras_chave', ['Resultado', 'Homologação', 'Classificados'])
-
-        # 3. Intervalo de monitoramento é fixo
-        new_config['intervalo_minutos'] = old_config.get('intervalo_minutos', 10)
-
-        # 4. Configurações de servidor são fixas
-        new_config['servidor_host'] = old_config.get('servidor_host', '0.0.0.0')
-        new_config['servidor_porta'] = old_config.get('servidor_porta', 5000)
-
-        # Se a senha do SMTP for '***', mantém a senha atual
-        if 'email' in new_config and new_config['email'].get('smtp_password') == '***':
-            if 'email' in old_config:
-                new_config['email']['smtp_password'] = old_config['email'].get('smtp_password', '')
-
-        save_config(new_config)
-        add_log("Configuração de email atualizada", "SUCESSO")
-
-        return jsonify({'message': 'Configuração atualizada com sucesso'})
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    """Atualiza configuração - DESABILITADO PARA SEGURANCA"""
+    return jsonify({'error': 'Acesso negado. Esta operacao requer privilegios de administrador.'}), 403
 
 
 @app.route('/api/test-email', methods=['POST'])
 def test_email():
-    """Testa configuração de email enviando para todos os inscritos"""
-    try:
-        config = load_config()
-        if not config.get('email', {}).get('enabled', False):
-            return jsonify({'error': 'Notificações por email desabilitadas'}), 400
-
-        # Carrega lista de inscritos
-        subscribers = load_subscribers()
-        if not subscribers:
-            return jsonify({'error': 'Nenhum email inscrito para testar'}), 400
-
-        notifier = EmailNotifier(config['email'])
-        sucesso, mensagem = notifier.testar_conexao()
-
-        if sucesso:
-            # Envia email de teste para todos os inscritos
-            if notifier.enviar_alerta(
-                url=config.get('url', 'https://fgduque.org.br/edital/projeto-asas-para-todos-ufersa-fgd-anac-edital-18-2024-1718822792'),
-                palavras_encontradas=["Teste de Notificação"],
-                mudanca_conteudo=True,
-                destinatarios=subscribers
-            ):
-                add_log(f"Email de teste enviado para {len(subscribers)} inscrito(s)", "SUCESSO")
-                return jsonify({
-                    'message': f'Email de teste enviado com sucesso para {len(subscribers)} inscrito(s)!',
-                    'count': len(subscribers),
-                    'subscribers': subscribers
-                })
-            else:
-                return jsonify({'error': 'Falha ao enviar emails de teste'}), 500
-        else:
-            return jsonify({'error': mensagem}), 400
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    """Testa configuração de email - DESABILITADO PARA SEGURANCA"""
+    return jsonify({'error': 'Acesso negado. Esta operacao requer privilegios de administrador.'}), 403
 
 
 @app.route('/api/start', methods=['POST'])
 def start_monitor():
-    """Inicia monitoramento"""
-    if monitor_state['running']:
-        return jsonify({'error': 'Monitor já está em execução'}), 400
-
-    # Gera ID único para esta thread
-    import uuid
-    thread_id = str(uuid.uuid4())
-
-    monitor_state['running'] = True
-    monitor_state['current_check'] = 0
-    monitor_state['mudancas_detectadas'] = 0
-    monitor_state['palavras_encontradas'] = []
-    monitor_state['thread_id'] = thread_id
-
-    thread = threading.Thread(target=monitor_loop, args=(thread_id,), daemon=True)
-    thread.start()
-    monitor_state['thread'] = thread
-
-    return jsonify({'message': 'Monitoramento iniciado'})
+    """Inicia monitoramento - DESABILITADO PARA SEGURANCA"""
+    return jsonify({'error': 'Acesso negado. Esta operacao requer privilegios de administrador.'}), 403
 
 
 @app.route('/api/stop', methods=['POST'])
 def stop_monitor():
-    """Para monitoramento"""
-    if not monitor_state['running']:
-        return jsonify({'error': 'Monitor não está em execução'}), 400
-
-    monitor_state['running'] = False
-    monitor_state['thread_id'] = None  # Invalida o ID da thread
-    return jsonify({'message': 'Monitoramento parado'})
+    """Para monitoramento - DESABILITADO PARA SEGURANCA"""
+    return jsonify({'error': 'Acesso negado. Esta operacao requer privilegios de administrador.'}), 403
 
 
 @app.route('/api/clear-logs', methods=['POST'])
 def clear_logs():
-    """Limpa logs"""
-    monitor_state['logs'] = []
-    return jsonify({'message': 'Logs limpos'})
+    """Limpa logs - DESABILITADO PARA SEGURANCA"""
+    return jsonify({'error': 'Acesso negado. Esta operacao requer privilegios de administrador.'}), 403
 
 
 @app.route('/api/subscribers', methods=['GET'])
 def get_subscribers():
-    """Retorna lista de emails inscritos"""
+    """Retorna apenas a contagem de emails inscritos (sem revelar os emails)"""
     subscribers = load_subscribers()
     return jsonify({
-        'subscribers': subscribers,
         'count': len(subscribers)
     })
 
@@ -453,129 +365,26 @@ def add_subscriber_endpoint():
 
 @app.route('/api/subscribers/<email>', methods=['DELETE'])
 def remove_subscriber_endpoint(email):
-    """Remove um email da lista de inscritos"""
-    try:
-        if remove_subscriber(email):
-            return jsonify({'message': 'Email removido com sucesso'})
-        else:
-            return jsonify({'error': 'Email não encontrado'}), 404
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    """Remove um email da lista de inscritos - DESABILITADO PARA SEGURANCA"""
+    return jsonify({'error': 'Acesso negado. Esta operacao requer privilegios de administrador.'}), 403
 
 
 @app.route('/api/check-now', methods=['POST'])
 def check_now():
-    """Força uma verificação imediata (apenas para testes)"""
-    try:
-        if not monitor_state['running']:
-            return jsonify({'error': 'Monitor não está em execução'}), 400
-
-        monitor = monitor_state['monitor']
-        if not monitor:
-            return jsonify({'error': 'Monitor não inicializado'}), 400
-
-        add_log("Verificação manual iniciada", "INFO")
-
-        # Busca e processa página
-        soup = monitor.buscar_pagina()
-        conteudo = monitor.extrair_conteudo_relevante(soup)
-
-        # Verifica palavras-chave
-        palavras_encontradas = monitor.verificar_palavras_chave(conteudo)
-
-        # Verifica mudanças
-        mudanca_conteudo, hash_atual = monitor.verificar_mudancas(conteudo)
-
-        resultado = {
-            'mudanca_detectada': mudanca_conteudo,
-            'palavras_encontradas': palavras_encontradas,
-            'hash_atual': hash_atual,
-            'tamanho_conteudo': len(conteudo)
-        }
-
-        if mudanca_conteudo:
-            add_log("Verificação manual: MUDANÇA DETECTADA!", "ALERTA")
-        else:
-            add_log("Verificação manual: Nenhuma mudança detectada - site sem alterações", "INFO")
-
-        if palavras_encontradas:
-            add_log(f"Verificação manual: Palavras-chave no site: {', '.join(palavras_encontradas)}", "INFO")
-
-        return jsonify(resultado)
-
-    except Exception as e:
-        add_log(f"Erro na verificação manual: {str(e)}", "ERRO")
-        return jsonify({'error': str(e)}), 500
+    """Força uma verificação imediata - DESABILITADO PARA SEGURANCA"""
+    return jsonify({'error': 'Acesso negado. Esta operacao requer privilegios de administrador.'}), 403
 
 
 @app.route('/api/diagnostic', methods=['GET'])
 def diagnostic():
-    """Retorna informações de diagnóstico sobre o monitoramento"""
-    try:
-        if not monitor_state['running']:
-            return jsonify({'error': 'Monitor não está em execução. Inicie o monitoramento primeiro.'}), 400
-
-        monitor = monitor_state['monitor']
-        if not monitor:
-            return jsonify({'error': 'Monitor não inicializado'}), 400
-
-        # Busca página atual
-        soup = monitor.buscar_pagina()
-        conteudo = monitor.extrair_conteudo_relevante(soup)
-
-        # Calcula hash atual (sem alterar o hash_anterior)
-        hash_atual = monitor.calcular_hash(conteudo)
-
-        # Verifica palavras-chave
-        palavras_encontradas = monitor.verificar_palavras_chave(conteudo)
-
-        # Preview do conteúdo (primeiros 500 caracteres)
-        preview = conteudo[:500] + "..." if len(conteudo) > 500 else conteudo
-
-        resultado = {
-            'url': monitor.url,
-            'hash_anterior': monitor.hash_anterior,
-            'hash_atual': hash_atual,
-            'hash_mudou': monitor.hash_anterior is not None and hash_atual != monitor.hash_anterior,
-            'palavras_chave_configuradas': monitor.palavras_chave,
-            'palavras_encontradas': palavras_encontradas,
-            'tamanho_conteudo': len(conteudo),
-            'preview_conteudo': preview,
-            'intervalo_segundos': monitor.intervalo_segundos
-        }
-
-        add_log("Diagnóstico executado", "INFO")
-        return jsonify(resultado)
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    """Retorna informações de diagnóstico - DESABILITADO PARA SEGURANCA"""
+    return jsonify({'error': 'Acesso negado. Esta operacao requer privilegios de administrador.'}), 403
 
 
 @app.route('/api/reset-hash', methods=['POST'])
 def reset_hash():
-    """Reseta o hash anterior - a próxima verificação detectará mudança (apenas para testes)"""
-    try:
-        if not monitor_state['running']:
-            return jsonify({'error': 'Monitor não está em execução'}), 400
-
-        monitor = monitor_state['monitor']
-        if not monitor:
-            return jsonify({'error': 'Monitor não inicializado'}), 400
-
-        hash_anterior = monitor.hash_anterior
-        monitor.hash_anterior = None
-
-        add_log("Hash anterior resetado - próxima verificação detectará mudança", "ALERTA")
-
-        return jsonify({
-            'message': 'Hash resetado com sucesso',
-            'hash_anterior': hash_anterior,
-            'observacao': 'A próxima verificação detectará uma mudança mesmo que o conteúdo não tenha sido alterado'
-        })
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    """Reseta o hash anterior - DESABILITADO PARA SEGURANCA"""
+    return jsonify({'error': 'Acesso negado. Esta operacao requer privilegios de administrador.'}), 403
 
 
 if __name__ == '__main__':

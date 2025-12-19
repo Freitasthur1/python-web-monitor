@@ -131,29 +131,30 @@ async function loadSubscribers() {
         const data = await response.json();
 
         const count = data.count || 0;
-        const subscribers = data.subscribers || [];
 
         document.getElementById('subscriberCount').textContent = count;
 
         const listContainer = document.getElementById('subscribersList');
 
-        if (subscribers.length === 0) {
+        if (count === 0) {
             listContainer.innerHTML = '<p style="text-align: center; color: var(--gray-600, #718096); padding: 20px;">Nenhum email inscrito ainda</p>';
         } else {
-            let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
-            subscribers.forEach(email => {
-                const maskedEmail = maskEmail(email);
-                html += `
-                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--gray-50, #f7fafc); border-radius: 6px; border: 1px solid var(--gray-200, #e2e8f0);">
-                        <span style="font-size: 14px; color: var(--gray-700, #4a5568);" title="Email protegido por privacidade">${escapeHtml(maskedEmail)}</span>
-                        <button onclick="unsubscribeEmail('${escapeHtml(email)}')" style="padding: 6px 12px; background: var(--accent-alert, #ef4444); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                            Remover
-                        </button>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            listContainer.innerHTML = html;
+            listContainer.innerHTML = `
+                <div style="padding: 20px; text-align: center; background: var(--gray-50, #f7fafc); border-radius: 6px; border: 1px solid var(--gray-200, #e2e8f0);">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 10px; color: var(--primary, #3b82f6);">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <p style="font-size: 16px; color: var(--gray-700, #4a5568); margin-bottom: 5px;">
+                        <strong>${count}</strong> ${count === 1 ? 'email cadastrado' : 'emails cadastrados'}
+                    </p>
+                    <p style="font-size: 13px; color: var(--gray-500, #6b7280);">
+                        Os emails estao protegidos por privacidade
+                    </p>
+                </div>
+            `;
         }
     } catch (error) {
         console.error('Erro ao carregar inscritos:', error);
@@ -194,53 +195,6 @@ async function subscribeEmail(event) {
     }
 }
 
-// Unsubscribe email
-async function unsubscribeEmail(email) {
-    if (!confirm(`Tem certeza que deseja remover ${email} da lista?`)) {
-        return;
-    }
-
-    try {
-        const response = await fetch(`/api/subscribers/${encodeURIComponent(email)}`, {
-            method: 'DELETE'
-        });
-
-        if (response.ok) {
-            showNotification('Email removido com sucesso', 'success');
-            loadSubscribers();
-        } else {
-            const data = await response.json();
-            showNotification(data.error || 'Erro ao remover email', 'error');
-        }
-    } catch (error) {
-        console.error('Erro ao remover email:', error);
-        showNotification('Erro ao remover email', 'error');
-    }
-}
-
-// Test email notifications
-async function testEmailNotifications() {
-    if (!confirm('Enviar email de teste para todos os inscritos?')) {
-        return;
-    }
-
-    try {
-        const response = await fetch('/api/test-email', {
-            method: 'POST'
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            showNotification(`${data.message}\nVerifique a caixa de entrada dos emails cadastrados.`, 'success');
-        } else {
-            showNotification(data.error || 'Erro ao enviar email de teste', 'error');
-        }
-    } catch (error) {
-        console.error('Erro ao testar email:', error);
-        showNotification('Erro ao testar email', 'error');
-    }
-}
 
 // Update status
 async function updateStatus() {
@@ -255,15 +209,9 @@ async function updateStatus() {
         if (status.running) {
             headerPulse.classList.add('active');
             headerText.textContent = 'Sistema Ativo';
-
-            document.getElementById('startBtn').disabled = true;
-            document.getElementById('stopBtn').disabled = false;
         } else {
             headerPulse.classList.remove('active');
             headerText.textContent = 'Sistema Parado';
-
-            document.getElementById('startBtn').disabled = false;
-            document.getElementById('stopBtn').disabled = true;
         }
 
         // Update dashboard cards
@@ -316,69 +264,6 @@ async function updateLogs() {
 
     } catch (error) {
         console.error('Erro ao atualizar logs:', error);
-    }
-}
-
-// Start monitoring
-async function startMonitor() {
-    try {
-        const response = await fetch('/api/start', { method: 'POST' });
-
-        if (response.ok) {
-            showNotification('Monitoramento iniciado com sucesso!', 'success');
-            setTimeout(() => {
-                updateStatus();
-                updateLogs();
-            }, 500);
-        } else {
-            const error = await response.json();
-            showNotification('Erro: ' + error.error, 'error');
-        }
-    } catch (error) {
-        console.error('Erro ao iniciar monitoramento:', error);
-        showNotification('Erro ao iniciar monitoramento', 'error');
-    }
-}
-
-// Stop monitoring
-async function stopMonitor() {
-    try {
-        const response = await fetch('/api/stop', { method: 'POST' });
-
-        if (response.ok) {
-            showNotification('Monitoramento parado com sucesso', 'success');
-            setTimeout(() => {
-                updateStatus();
-                updateLogs();
-            }, 500);
-        } else {
-            const error = await response.json();
-            showNotification('Erro: ' + error.error, 'error');
-        }
-    } catch (error) {
-        console.error('Erro ao parar monitoramento:', error);
-        showNotification('Erro ao parar monitoramento', 'error');
-    }
-}
-
-// Clear logs
-async function clearLogs() {
-    if (!confirm('Deseja limpar todos os logs?')) {
-        return;
-    }
-
-    try {
-        const response = await fetch('/api/clear-logs', { method: 'POST' });
-
-        if (response.ok) {
-            showNotification('Logs limpos com sucesso', 'success');
-            updateLogs();
-        } else {
-            showNotification('Erro ao limpar logs', 'error');
-        }
-    } catch (error) {
-        console.error('Erro ao limpar logs:', error);
-        showNotification('Erro ao limpar logs', 'error');
     }
 }
 

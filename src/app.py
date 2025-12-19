@@ -104,8 +104,12 @@ def load_subscribers() -> List[str]:
             with open(SUBSCRIBERS_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 return data.get('emails', [])
-        except:
+        except Exception as e:
+            print(f"Erro ao carregar subscribers: {e}", flush=True)
             return []
+
+    # Se não existe, cria arquivo vazio
+    save_subscribers([])
     return []
 
 

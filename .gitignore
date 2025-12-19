@@ -35,12 +35,22 @@ env/
 *.swo
 *~
 
-# Project specific
+# Project specific - Configuration files (sensitive data)
 config/config.json
+
+# Project specific - Data files (user data)
+data/subscribers.json
+
+# Project specific - Log files
 logs/*.log
 *.log
 nohup.out
-data/*
+
+# Keep example files and .gitkeep
+!data/subscribers.json.example
+!config/config.json.example
+!data/.gitkeep
+!logs/.gitkeep
 
 # OS
 .DS_Store
@@ -59,3 +69,6 @@ docs/GUIA_ACESSO_VM.md
 # Claude Code settings
 .claude/
 CLAUDE.md
+
+# Git files that shouldn't be in root
+FETCH_HEAD

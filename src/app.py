@@ -296,8 +296,14 @@ def monitor_loop(thread_id):
 
         except Exception as e:
             add_log(f"Erro: {str(e)}", "ERRO")
-            # Aguarda 60 segundos em caso de erro, verificando thread_id
-            for _ in range(60):
+
+            # Calcula próxima verificação mesmo em caso de erro
+            proxima = datetime.now().timestamp() + intervalo_segundos
+            monitor_state['next_check'] = datetime.fromtimestamp(proxima).strftime("%Y-%m-%d %H:%M:%S")
+            add_log(f"Próxima tentativa: {monitor_state['next_check']}", "INFO")
+
+            # Aguarda intervalo completo em caso de erro para não sobrecarregar o servidor
+            for _ in range(intervalo_segundos):
                 if monitor_state['thread_id'] != thread_id:
                     add_log("Thread de monitoramento substituída, encerrando esta thread", "INFO")
                     return

@@ -81,6 +81,30 @@ body {
     justify-content: space-between;
 }
 
+.mobile-menu-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 0;
+    margin-right: 12px;
+    border-radius: 6px;
+    transition: var(--transition);
+}
+
+.mobile-menu-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.mobile-menu-btn:active {
+    background: rgba(255, 255, 255, 0.2);
+}
+
 .header-brand {
     display: flex;
     align-items: center;
@@ -140,6 +164,25 @@ body {
 .status-text {
     font-size: 13px;
     font-weight: 500;
+}
+
+/* Sidebar Overlay */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 85;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
 }
 
 /* Main Container */
@@ -813,6 +856,10 @@ input[type="checkbox"]:checked + .toggle-switch::before {
 
 /* Responsive */
 @media (max-width: 1024px) {
+    .mobile-menu-btn {
+        display: flex;
+    }
+
     .sidebar {
         position: fixed;
         left: 0;
@@ -821,6 +868,7 @@ input[type="checkbox"]:checked + .toggle-switch::before {
         z-index: 90;
         transform: translateX(-100%);
         transition: var(--transition);
+        box-shadow: var(--shadow-xl);
     }
 
     .sidebar.active {
@@ -959,6 +1007,19 @@ body.dark-mode .btn-secondary {
 
 body.dark-mode .btn-secondary:hover {
     background: #30363d;
+}
+
+/* Mobile menu button no modo escuro */
+body.dark-mode .mobile-menu-btn {
+    color: #c9d1d9;
+}
+
+body.dark-mode .mobile-menu-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode .mobile-menu-btn:active {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 /* Activity Feed no modo escuro */

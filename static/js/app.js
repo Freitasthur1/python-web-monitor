@@ -21,6 +21,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 2000);
 });
 
+// Toggle sidebar (mobile)
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    sidebar.classList.toggle('active');
+    overlay.classList.toggle('active');
+}
+
 // Show view
 function showView(viewName) {
     // Remove active class from all views
@@ -43,6 +51,14 @@ function showView(viewName) {
     const navBtn = document.querySelector(`[data-view="${viewName}"]`);
     if (navBtn) {
         navBtn.classList.add('active');
+    }
+
+    // Close sidebar on mobile after selecting a view
+    if (window.innerWidth <= 1024) {
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.querySelector('.sidebar-overlay');
+        sidebar.classList.remove('active');
+        overlay.classList.remove('active');
     }
 }
 
@@ -91,6 +107,23 @@ function toggleDarkMode() {
     localStorage.setItem('darkMode', darkMode);
 }
 
+// Mask email for privacy (LGPD compliance)
+function maskEmail(email) {
+    const [localPart, domain] = email.split('@');
+    if (!domain) return email;
+
+    // Show first 2 chars + *** + last char of local part
+    const maskedLocal = localPart.length > 3
+        ? localPart[0] + localPart[1] + '***' + localPart[localPart.length - 1]
+        : localPart[0] + '***';
+
+    // Show first char + *** of domain
+    const [domainName, tld] = domain.split('.');
+    const maskedDomain = domainName[0] + '***.' + tld;
+
+    return maskedLocal + '@' + maskedDomain;
+}
+
 // Load subscribers
 async function loadSubscribers() {
     try {
@@ -109,9 +142,10 @@ async function loadSubscribers() {
         } else {
             let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
             subscribers.forEach(email => {
+                const maskedEmail = maskEmail(email);
                 html += `
                     <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--gray-50, #f7fafc); border-radius: 6px; border: 1px solid var(--gray-200, #e2e8f0);">
-                        <span style="font-size: 14px; color: var(--gray-700, #4a5568);">${escapeHtml(email)}</span>
+                        <span style="font-size: 14px; color: var(--gray-700, #4a5568);" title="Email protegido por privacidade">${escapeHtml(maskedEmail)}</span>
                         <button onclick="unsubscribeEmail('${escapeHtml(email)}')" style="padding: 6px 12px; background: var(--accent-alert, #ef4444); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
                             Remover
                         </button>

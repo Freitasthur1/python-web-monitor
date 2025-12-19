@@ -13,6 +13,14 @@
     <!-- Header -->
     <header class="main-header">
         <div class="header-container">
+            <button class="mobile-menu-btn" onclick="toggleSidebar()" aria-label="Abrir menu">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+
             <div class="header-brand">
                 <svg class="logo-icon" width="40" height="40" viewBox="0 0 40 40" fill="none">
                     <path d="M20 5L35 15V25L20 35L5 25V15L20 5Z" stroke="currentColor" stroke-width="2" fill="none"/>
@@ -34,6 +42,9 @@
             </div>
         </div>
     </header>
+
+    <!-- Sidebar Overlay (Mobile) -->
+    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
 
     <!-- Main Container -->
     <div class="main-container">

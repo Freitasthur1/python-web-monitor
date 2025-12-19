@@ -14,7 +14,7 @@ sys.stdout.reconfigure(line_buffering=True) if hasattr(sys.stdout, 'reconfigure'
 # Adiciona o diretório raiz ao path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from src.app import app, load_config
+from src.app import app, load_config, iniciar_monitoramento_automatico
 
 if __name__ == '__main__':
     # Configura logging para exibir informações do Flask
@@ -39,6 +39,9 @@ if __name__ == '__main__':
     print(f"\nPressione Ctrl+C para parar o servidor", flush=True)
     print("=" * 80, flush=True)
     print("", flush=True)
+
+    # Inicia o monitoramento automaticamente ao iniciar a aplicação
+    iniciar_monitoramento_automatico()
 
     app.run(
         host=config['servidor_host'],

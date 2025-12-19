@@ -9,44 +9,52 @@ Usuarios publicos NAO tem acesso a funcoes administrativas.
 
 Como administrador, voce tem acesso exclusivo via SSH para:
 
-1. Iniciar/Parar o monitoramento
+1. Controlar o servico (iniciar/parar/reiniciar)
 2. Testar configuracoes de email
 3. Gerenciar subscribers
 4. Visualizar logs completos
 
-## Script de Controle Administrativo
+## Sistema de Auto-Start (NOVO)
 
-Use o script `admin_control.py` para controlar o monitoramento:
+**IMPORTANTE:** O monitoramento agora inicia AUTOMATICAMENTE quando o servico Flask e iniciado.
+Nao e mais necessario usar scripts separados para iniciar o monitoramento.
 
-### Comandos Disponiveis
+### Controle do Servico via Systemd
+
+O monitoramento e controlado atraves do servico systemd:
 
 ```bash
-# Iniciar monitoramento
-python3 /opt/monitoramento-ufersa/admin_control.py start
+# Iniciar servico e monitoramento
+sudo systemctl start monitor-edital.service
 
-# Parar monitoramento
-python3 /opt/monitoramento-ufersa/admin_control.py stop
+# Parar servico e monitoramento
+sudo systemctl stop monitor-edital.service
 
-# Ver status
-python3 /opt/monitoramento-ufersa/admin_control.py status
+# Reiniciar servico e monitoramento
+sudo systemctl restart monitor-edital.service
 
-# Reiniciar
-python3 /opt/monitoramento-ufersa/admin_control.py restart
+# Ver status do servico
+sudo systemctl status monitor-edital.service
+
+# Ver logs em tempo real
+journalctl -u monitor-edital.service -f
 ```
 
-## Controle via API (Local)
-
-Como administrador com acesso SSH, voce pode usar curl localmente:
+### Verificar Status do Monitoramento
 
 ```bash
-# Iniciar (BLOQUEADO - use admin_control.py)
-# curl -X POST http://localhost:5000/api/start
-
-# Status (publico)
+# Via API (retorna JSON com status completo)
 curl http://localhost:5000/api/status
 
-# Testar email (BLOQUEADO - configure no arquivo)
-# curl -X POST http://localhost:5000/api/test-email
+# Exemplo de resposta:
+# {
+#   "running": true,
+#   "current_check": 42,
+#   "last_check": "2025-12-19 14:33:06",
+#   "next_check": "2025-12-19 14:43:07",
+#   "palavras_encontradas": ["resultado", "classificados"],
+#   "mudancas_detectadas": 2
+# }
 ```
 
 ## Configuracoes

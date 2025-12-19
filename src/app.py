@@ -163,6 +163,50 @@ def add_log(mensagem: str, tipo: str = "INFO"):
     print(f"[{timestamp}] [{tipo}] {mensagem}", flush=True)
 
 
+def iniciar_monitoramento():
+    """Inicia o monitoramento (uso interno)"""
+    import uuid
+
+    if monitor_state['running']:
+        add_log("Monitor já está em execução", "ALERTA")
+        return False
+
+    # Gera ID único para esta thread
+    thread_id = str(uuid.uuid4())
+
+    monitor_state['running'] = True
+    monitor_state['current_check'] = 0
+    monitor_state['mudancas_detectadas'] = 0
+    monitor_state['palavras_encontradas'] = []
+    monitor_state['thread_id'] = thread_id
+
+    thread = threading.Thread(target=monitor_loop, args=(thread_id,), daemon=True)
+    thread.start()
+    monitor_state['thread'] = thread
+
+    add_log("Sistema de monitoramento pronto", "INFO")
+    return True
+
+
+def parar_monitoramento():
+    """Para o monitoramento (uso interno)"""
+    if not monitor_state['running']:
+        add_log("Monitor não está em execução", "ALERTA")
+        return False
+
+    monitor_state['running'] = False
+    monitor_state['thread_id'] = None
+    add_log("Monitoramento parado", "ALERTA")
+    return True
+
+
+def iniciar_monitoramento_automatico():
+    """Inicia o monitoramento automaticamente ao startar a aplicação"""
+    # Aguarda 2 segundos para garantir que o Flask está completamente iniciado
+    time.sleep(2)
+    iniciar_monitoramento()
+
+
 def monitor_loop(thread_id):
     """Loop principal de monitoramento"""
     config = load_config()

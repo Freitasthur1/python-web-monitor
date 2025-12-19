@@ -11,47 +11,7 @@ import json
 # Adiciona o diretório raiz ao path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from src.app import monitor_state, load_config
-import threading
-import uuid
-
-
-def iniciar_monitoramento():
-    """Inicia o monitoramento programaticamente"""
-    if monitor_state['running']:
-        print("ERRO: Monitor ja esta em execucao")
-        return False
-
-    # Importa a funcao de loop
-    from src.app import monitor_loop
-
-    # Gera ID unico para esta thread
-    thread_id = str(uuid.uuid4())
-
-    monitor_state['running'] = True
-    monitor_state['current_check'] = 0
-    monitor_state['mudancas_detectadas'] = 0
-    monitor_state['palavras_encontradas'] = []
-    monitor_state['thread_id'] = thread_id
-
-    thread = threading.Thread(target=monitor_loop, args=(thread_id,), daemon=True)
-    thread.start()
-    monitor_state['thread'] = thread
-
-    print("SUCESSO: Monitoramento iniciado")
-    return True
-
-
-def parar_monitoramento():
-    """Para o monitoramento"""
-    if not monitor_state['running']:
-        print("ERRO: Monitor nao esta em execucao")
-        return False
-
-    monitor_state['running'] = False
-    monitor_state['thread_id'] = None
-    print("SUCESSO: Monitoramento parado")
-    return True
+from src.app import monitor_state, load_config, iniciar_monitoramento, parar_monitoramento
 
 
 def status_monitoramento():
@@ -95,23 +55,19 @@ def main():
     # Importa app para ter acesso ao estado
     from src.app import app
 
-    with app.app_context():
-        if comando == 'start':
-            iniciar_monitoramento()
-        elif comando == 'stop':
-            parar_monitoramento()
-        elif comando == 'status':
-            status_monitoramento()
-        elif comando == 'restart':
-            print("Parando monitoramento...")
-            parar_monitoramento()
-            import time
-            time.sleep(2)
-            print("Iniciando monitoramento...")
-            iniciar_monitoramento()
-        else:
-            print(f"ERRO: Comando desconhecido: {comando}")
-            sys.exit(1)
+    print("\n[AVISO] Este script nao funciona mais com o monitoramento auto-start.")
+    print("O monitoramento agora inicia automaticamente quando o servico Flask e iniciado.")
+    print("\nPara controlar o servico, use os comandos systemd:")
+    print("  sudo systemctl start monitor-edital.service   - Inicia o servico e o monitoramento")
+    print("  sudo systemctl stop monitor-edital.service    - Para o servico e o monitoramento")
+    print("  sudo systemctl restart monitor-edital.service - Reinicia o servico e o monitoramento")
+    print("  sudo systemctl status monitor-edital.service  - Verifica status do servico")
+    print("\nPara ver logs em tempo real:")
+    print("  tail -f /opt/monitoramento-ufersa/logs/service.log")
+    print("  journalctl -u monitor-edital.service -f\n")
+
+    if comando == 'status':
+        status_monitoramento()
 
 
 if __name__ == '__main__':

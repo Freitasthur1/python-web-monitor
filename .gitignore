@@ -40,6 +40,8 @@ config/config.json
 
 # Project specific - Data files (user data)
 data/subscribers.json
+data/historico.json
+data/hash_anterior.txt
 
 # Project specific - Scripts with credentials
 scripts/duckdns-update.sh

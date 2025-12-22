@@ -12,7 +12,7 @@ import os
 import sys
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from typing import List, Dict
+from typing import List, Dict, Optional
 import time
 
 # Adiciona o diretório pai ao path para importar módulos
@@ -49,6 +49,8 @@ CORS(app)
 # Configurações
 CONFIG_FILE = os.path.join(CONFIG_DIR, 'config.json')
 SUBSCRIBERS_FILE = os.path.join(DATA_DIR, 'subscribers.json')
+HISTORICO_FILE = os.path.join(DATA_DIR, 'historico.json')
+HASH_FILE = os.path.join(DATA_DIR, 'hash_anterior.txt')
 LOGS_MAX = 100
 
 # Estado global do monitor
@@ -157,6 +159,67 @@ def remove_subscriber(email: str) -> bool:
     return False
 
 
+def load_historico() -> List[Dict]:
+    """Carrega histórico de mudanças detectadas"""
+    if os.path.exists(HISTORICO_FILE):
+        try:
+            with open(HISTORICO_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data.get('atividades', [])
+        except Exception as e:
+            print(f"Erro ao carregar histórico: {e}", flush=True)
+            return []
+
+    # Se não existe, cria arquivo vazio
+    save_historico([])
+    return []
+
+
+def save_historico(atividades: List[Dict]):
+    """Salva histórico de mudanças detectadas"""
+    with open(HISTORICO_FILE, 'w', encoding='utf-8') as f:
+        json.dump({'atividades': atividades}, f, indent=4, ensure_ascii=False)
+
+
+def adicionar_atividade(palavras_encontradas: List[str], conteudo_resumo: str = ""):
+    """Adiciona uma nova atividade ao histórico"""
+    timestamp = get_brasilia_time().strftime("%Y-%m-%d %H:%M:%S")
+
+    atividade = {
+        'timestamp': timestamp,
+        'palavras_encontradas': palavras_encontradas,
+        'conteudo_resumo': conteudo_resumo,
+        'tipo': 'MUDANCA'
+    }
+
+    atividades = load_historico()
+    atividades.insert(0, atividade)  # Adiciona no início
+
+    # Limita a 50 atividades mais recentes
+    if len(atividades) > 50:
+        atividades = atividades[:50]
+
+    save_historico(atividades)
+
+
+def load_hash_anterior() -> Optional[str]:
+    """Carrega o hash anterior salvo"""
+    if os.path.exists(HASH_FILE):
+        try:
+            with open(HASH_FILE, 'r', encoding='utf-8') as f:
+                return f.read().strip()
+        except Exception as e:
+            print(f"Erro ao carregar hash anterior: {e}", flush=True)
+            return None
+    return None
+
+
+def save_hash_anterior(hash_str: str):
+    """Salva o hash anterior"""
+    with open(HASH_FILE, 'w', encoding='utf-8') as f:
+        f.write(hash_str)
+
+
 def add_log(mensagem: str, tipo: str = "INFO"):
     """Adiciona log ao estado global"""
     timestamp = get_brasilia_time().strftime("%Y-%m-%d %H:%M:%S")
@@ -231,6 +294,12 @@ def monitor_loop(thread_id):
     # Inicializa monitor
     monitor_state['monitor'] = MonitorEdital(url, palavras_chave, intervalo_minutos)
 
+    # Carrega hash anterior se existir (para manter histórico entre reinicializações)
+    hash_salvo = load_hash_anterior()
+    if hash_salvo:
+        monitor_state['monitor'].hash_anterior = hash_salvo
+        add_log("Hash anterior carregado - detecção de mudanças restaurada", "INFO")
+
     # Inicializa notificador de email
     if config.get('email', {}).get('enabled', False):
         monitor_state['email_notifier'] = EmailNotifier(config['email'])
@@ -271,6 +340,16 @@ def monitor_loop(thread_id):
                 monitor_state['mudancas_detectadas'] += 1
                 add_log("MUDANÇA NO CONTEÚDO DETECTADA!", "ALERTA")
 
+                # Cria resumo do conteúdo (primeiros 300 caracteres)
+                conteudo_resumo = conteudo[:300].strip() if len(conteudo) > 300 else conteudo.strip()
+
+                # Adiciona atividade ao histórico
+                adicionar_atividade(palavras_encontradas, conteudo_resumo)
+                add_log("Mudança registrada no histórico de atividades", "INFO")
+
+                # Salva hash atual para persistir entre reinicializações
+                save_hash_anterior(monitor_state['monitor'].hash_anterior)
+
                 # Envia notificação por email APENAS quando há mudança
                 if monitor_state['email_notifier']:
                     # Carrega lista de emails inscritos
@@ -279,7 +358,8 @@ def monitor_loop(thread_id):
                     if subscribers:
                         # Envia para todos os inscritos
                         if monitor_state['email_notifier'].enviar_alerta(
-                            url, palavras_encontradas, mudanca_conteudo, destinatarios=subscribers
+                            url, palavras_encontradas, mudanca_conteudo, destinatarios=subscribers,
+                            conteudo_resumo=conteudo_resumo
                         ):
                             add_log(f"Notificação enviada para {len(subscribers)} inscrito(s)", "SUCESSO")
                         else:
@@ -288,6 +368,8 @@ def monitor_loop(thread_id):
                         add_log("Mudança detectada mas nenhum email inscrito para notificar", "ALERTA")
             else:
                 add_log("Nenhuma mudança detectada - site sem alterações", "INFO")
+                # Salva hash atual mesmo sem mudança (para manter sincronizado)
+                save_hash_anterior(monitor_state['monitor'].hash_anterior)
 
             # Calcula próxima verificação
             proxima = get_brasilia_time().timestamp() + intervalo_segundos
@@ -324,13 +406,17 @@ def index():
 @app.route('/api/status')
 def get_status():
     """Retorna status atual do monitor"""
+    # Conta mudanças do histórico para manter sincronizado
+    historico = load_historico()
+    total_mudancas = len(historico)
+
     return jsonify({
         'running': monitor_state['running'],
         'current_check': monitor_state['current_check'],
         'last_check': monitor_state['last_check'],
         'next_check': monitor_state['next_check'],
         'palavras_encontradas': monitor_state['palavras_encontradas'],
-        'mudancas_detectadas': monitor_state['mudancas_detectadas']
+        'mudancas_detectadas': total_mudancas
     })
 
 
@@ -339,6 +425,14 @@ def get_logs():
     """Retorna logs recentes"""
     limit = request.args.get('limit', 50, type=int)
     return jsonify({'logs': monitor_state['logs'][:limit]})
+
+
+@app.route('/api/atividades')
+def get_atividades():
+    """Retorna histórico de atividades (mudanças detectadas)"""
+    limit = request.args.get('limit', 20, type=int)
+    atividades = load_historico()
+    return jsonify({'atividades': atividades[:limit]})
 
 
 @app.route('/api/config', methods=['GET'])

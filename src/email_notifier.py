@@ -53,7 +53,8 @@ class EmailNotifier:
         url: str,
         palavras_encontradas: List[str],
         mudanca_conteudo: bool,
-        destinatarios: Optional[List[str]] = None
+        destinatarios: Optional[List[str]] = None,
+        conteudo_resumo: str = ""
     ) -> bool:
         """
         Envia email de alerta
@@ -63,6 +64,7 @@ class EmailNotifier:
             palavras_encontradas: Lista de palavras-chave encontradas
             mudanca_conteudo: Se houve mudança no conteúdo
             destinatarios: Lista opcional de emails destinatários (se None, usa to_email)
+            conteudo_resumo: Resumo do conteúdo atual da página
 
         Returns:
             True se enviou com sucesso, False caso contrário
@@ -90,8 +92,8 @@ class EmailNotifier:
                 msg['To'] = email_destino
 
                 # Corpo do email
-                texto = self._criar_corpo_texto(url, palavras_encontradas, mudanca_conteudo)
-                html = self._criar_corpo_html(url, palavras_encontradas, mudanca_conteudo)
+                texto = self._criar_corpo_texto(url, palavras_encontradas, mudanca_conteudo, conteudo_resumo)
+                html = self._criar_corpo_html(url, palavras_encontradas, mudanca_conteudo, conteudo_resumo)
 
                 parte_texto = MIMEText(texto, 'plain', 'utf-8')
                 parte_html = MIMEText(html, 'html', 'utf-8')
@@ -120,7 +122,8 @@ class EmailNotifier:
         self,
         url: str,
         palavras_encontradas: List[str],
-        mudanca_conteudo: bool
+        mudanca_conteudo: bool,
+        conteudo_resumo: str = ""
     ) -> str:
         """Cria corpo de texto simples do email"""
         linhas = [
@@ -132,18 +135,27 @@ class EmailNotifier:
             ""
         ]
 
+        if mudanca_conteudo:
+            linhas.append("MUDANÇA REAL NO CONTEÚDO DA PÁGINA DETECTADA!")
+            linhas.append("(Esta notificação foi enviada porque o conteúdo da página mudou,")
+            linhas.append("não apenas porque palavras-chave foram encontradas)")
+            linhas.append("")
+
+        if conteudo_resumo:
+            linhas.append("Prévia do conteúdo atual:")
+            linhas.append("-" * 50)
+            linhas.append(conteudo_resumo)
+            linhas.append("-" * 50)
+            linhas.append("")
+
         if palavras_encontradas:
-            linhas.append("Palavras-chave detectadas:")
+            linhas.append("Palavras-chave encontradas no conteúdo:")
             for palavra in palavras_encontradas:
                 linhas.append(f"  - {palavra}")
             linhas.append("")
 
-        if mudanca_conteudo:
-            linhas.append("MUDANÇA NO CONTEÚDO DA PÁGINA DETECTADA!")
-            linhas.append("")
-
         linhas.extend([
-            "Acesse a URL acima para verificar as alterações.",
+            "Acesse a URL acima para verificar todas as alterações.",
             "",
             "---",
             "Monitor de Editais Públicos",
@@ -156,7 +168,8 @@ class EmailNotifier:
         self,
         url: str,
         palavras_encontradas: List[str],
-        mudanca_conteudo: bool
+        mudanca_conteudo: bool,
+        conteudo_resumo: str = ""
     ) -> str:
         """Cria corpo HTML do email"""
         palavras_html = ""
@@ -169,8 +182,28 @@ class EmailNotifier:
         mudanca_html = ""
         if mudanca_conteudo:
             mudanca_html = """
-            <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin: 15px 0;">
-                <strong>MUDANÇA NO CONTEÚDO DA PÁGINA DETECTADA!</strong>
+            <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 15px 0; border-radius: 6px;">
+                <h3 style="margin: 0 0 8px 0; color: #856404;">MUDANÇA REAL NO CONTEÚDO DA PÁGINA DETECTADA!</h3>
+                <p style="margin: 0; font-size: 14px; color: #856404;">
+                    Esta notificação foi enviada porque o <strong>conteúdo da página mudou</strong>,
+                    não apenas porque palavras-chave foram encontradas.
+                </p>
+            </div>
+            """
+
+        conteudo_html = ""
+        if conteudo_resumo:
+            # Escape HTML no resumo para evitar problemas
+            conteudo_escapado = conteudo_resumo.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            conteudo_html = f"""
+            <div class="info-box" style="background: white; padding: 15px; margin: 15px 0; border-radius: 6px; border-left: 4px solid #27ae60;">
+                <h3 style="margin: 0 0 10px 0; color: #1a1a1a;">Prévia do Conteúdo Atual:</h3>
+                <div style="background: #f8f9fa; padding: 12px; border-radius: 4px; font-family: monospace; font-size: 13px; line-height: 1.6; color: #2d3748; white-space: pre-wrap; word-wrap: break-word;">
+{conteudo_escapado}
+                </div>
+                <p style="margin: 10px 0 0 0; font-size: 12px; color: #718096;">
+                    Acesse a página para ver o conteúdo completo
+                </p>
             </div>
             """
 
@@ -198,7 +231,9 @@ class EmailNotifier:
                 <div class="content">
                     {mudanca_html}
 
-                    {f'<div class="info-box"><h3>Palavras-chave Detectadas:</h3>{palavras_html}</div>' if palavras_encontradas else ''}
+                    {conteudo_html}
+
+                    {f'<div class="info-box"><h3>Palavras-chave Encontradas:</h3>{palavras_html}</div>' if palavras_encontradas else ''}
 
                     <div class="info-box">
                         <h3>URL Monitorada:</h3>

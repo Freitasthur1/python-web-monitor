@@ -12,11 +12,13 @@ document.addEventListener('DOMContentLoaded', function() {
     loadSubscribers();
     updateStatus();
     updateLogs();
+    updateActivityFeed();
 
-    // Update status, logs and subscribers every 2 seconds
+    // Update status, logs, subscribers and activity feed every 2 seconds
     updateInterval = setInterval(() => {
         updateStatus();
         updateLogs();
+        updateActivityFeed();
         loadSubscribers();
     }, 2000);
 });
@@ -264,6 +266,56 @@ async function updateLogs() {
 
     } catch (error) {
         console.error('Erro ao atualizar logs:', error);
+    }
+}
+
+// Update activity feed
+async function updateActivityFeed() {
+    try {
+        const response = await fetch('/api/atividades?limit=20');
+        const data = await response.json();
+
+        const activityFeed = document.getElementById('activityFeed');
+
+        if (!data.atividades || data.atividades.length === 0) {
+            activityFeed.innerHTML = `
+                <div class="empty-state">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <p>Nenhuma atividade registrada ainda</p>
+                    <small>Inicie o monitoramento para começar a detectar mudanças</small>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        data.atividades.forEach(atividade => {
+            const palavrasHtml = atividade.palavras_encontradas && atividade.palavras_encontradas.length > 0
+                ? `<div class="activity-keywords">
+                    ${atividade.palavras_encontradas.map(p => `<span class="keyword-tag">${escapeHtml(p)}</span>`).join('')}
+                   </div>`
+                : '';
+
+            html += `
+                <div class="activity-item">
+                    <div class="activity-content">
+                        <div class="activity-header">
+                            <span class="activity-time">${atividade.timestamp}</span>
+                        </div>
+                        ${palavrasHtml}
+                    </div>
+                </div>
+            `;
+        });
+
+        activityFeed.innerHTML = html;
+
+    } catch (error) {
+        console.error('Erro ao atualizar feed de atividades:', error);
     }
 }
 

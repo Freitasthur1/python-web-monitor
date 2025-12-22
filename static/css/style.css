@@ -438,39 +438,15 @@ body {
 }
 
 .activity-item {
-    display: flex;
-    gap: 16px;
-    padding: 16px;
-    border-radius: var(--radius);
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
     background: var(--gray-50);
-    margin-bottom: 12px;
-    transition: var(--transition);
-    border-left: 3px solid var(--accent-info);
+    margin-bottom: 8px;
+    border-left: 2px solid var(--accent-info);
 }
 
 .activity-item:hover {
     background: var(--gray-100);
-    transform: translateX(4px);
-}
-
-.activity-item.warning {
-    border-left-color: var(--accent-warning);
-}
-
-.activity-item.alert {
-    border-left-color: var(--accent-alert);
-}
-
-.activity-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    background: white;
-    box-shadow: var(--shadow-sm);
 }
 
 .activity-content {
@@ -478,35 +454,32 @@ body {
     min-width: 0;
 }
 
-.activity-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--primary-dark);
-    margin-bottom: 4px;
+.activity-header {
+    margin-bottom: 6px;
 }
 
-.activity-meta {
+.activity-time {
     font-size: 13px;
-    color: var(--gray-600);
-}
-
-.activity-link {
-    margin-top: 8px;
-}
-
-.activity-link a {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
+    color: var(--gray-700);
     font-weight: 500;
-    color: var(--primary);
-    text-decoration: none;
-    transition: var(--transition);
 }
 
-.activity-link a:hover {
-    color: var(--primary-light);
+.activity-keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.keyword-tag {
+    display: inline-block;
+    padding: 3px 8px;
+    background: var(--primary);
+    color: white;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
 }
 
 /* Empty State */
@@ -1043,6 +1016,22 @@ body.dark-mode .empty-state {
 
 body.dark-mode .empty-state svg {
     stroke: #30363d;
+}
+
+body.dark-mode .activity-item {
+    background: #0d1117;
+}
+
+body.dark-mode .activity-item:hover {
+    background: #161b22;
+}
+
+body.dark-mode .activity-time {
+    color: #c9d1d9;
+}
+
+body.dark-mode .keyword-tag {
+    background: #1f6feb;
 }
 
 /* Alerts no modo escuro */
